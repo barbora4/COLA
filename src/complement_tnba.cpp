@@ -102,6 +102,10 @@ namespace cola
       }
     }
 
+    /******/
+    complement_mstate(spot::scc_info &si) : si_(si) {}
+    /******/
+
     std::set<unsigned>
     get_reach_set() const;
 
@@ -158,6 +162,30 @@ namespace cola
     // breakpoint construction for weak accepting SCCs
     std::set<unsigned> weak_set_;
     std::set<unsigned> break_set_;
+
+    /*******/
+    std::vector<std::vector<unsigned>> iw_sccs_;
+    std::vector<unsigned> iw_break_set_;
+    int active_index_;
+
+    void 
+    set_iw_sccs(std::vector<std::vector<unsigned>> iw_sccs)
+    {
+      this->iw_sccs_ = iw_sccs;
+    }
+
+    void 
+    set_iw_break_set(std::vector<unsigned> iw_break_set)
+    {
+      this->iw_break_set_ = iw_break_set;
+    }
+
+    void
+    set_active_index(int index)
+    {
+      this->active_index_ = index;
+    }
+    /*******/
   };
 
   struct complement_mstate_hash
@@ -746,6 +774,19 @@ namespace cola
     }
   };
 
+  /***********************************************************************/
+  // Miyano-Hayashi complementation for IW components
+  class mh_complement 
+  {
+  private:
+    // source automaton
+    const spot::const_twa_graph_ptr aut_;
+
+  public:
+    mh_complement(const spot::const_twa_graph_ptr& aut) : aut_(aut){}
+  };
+  /***********************************************************************/
+
   // complementation Buchi automata
   class tnba_complement
   {
@@ -811,6 +852,8 @@ namespace cola
     std::vector<unsigned> acc_detsccs_;
     // the index of each deterministic accepting SCCs
     std::vector<unsigned> acc_nondetsccs_;
+    // the index of each weak SCCs
+    std::vector<unsigned> weaksccs_;
 
     // Show Rank states in state name to help debug
     bool show_names_;
@@ -836,30 +879,43 @@ namespace cola
     std::string
     get_name(const complement_mstate &ms)
     {
-      // nondeterministic states (including weak states)
-      bool first_state = true;
-      std::string res = "P=" + get_set_string(ms.weak_set_);
-      res += ", O=" + get_set_string(ms.break_set_);
-      // now output according SCCs
-      for (unsigned i = 0; i < acc_detsccs_.size(); i++)
-      {
-        std::vector<state_rank> states = ms.detscc_ranks_[i];
-        res += ", " + get_det_string(states);
-        res += ", scc = " + std::to_string(acc_detsccs_[i]) + ", ";
+      // only for weak sccs so far
+      std::string name;
+      name += "(";
+      for (auto partial : ms.iw_sccs_){
+        const std::set<unsigned> tmp(partial.begin(), partial.end());
+        name += get_set_string(tmp);
       }
+      name += ",";
+      const std::set<unsigned> breakset(ms.break_set_.begin(), ms.break_set_.end());
+      name += get_set_string(breakset);
+      name += ")";
+      return name;
 
-      res += "[";
-      // now output nondeterministic sccs
-      std::vector<std::set<unsigned>> nondets = ms.nondetscc_ranks_;
-      for (unsigned i = 0; i < nondets.size(); i++)
-      {
-        if (!first_state)
-          res += " ,";
-        first_state = false;
-        res += "(" + get_set_string(nondets[i]) + ", " + std::to_string((int)ms.nondetscc_marks_[i]) + ")";
-      }
-      res += "]";
-      return res;
+      // // nondeterministic states (including weak states)
+      // bool first_state = true;
+      // std::string res = "P=" + get_set_string(ms.weak_set_);
+      // res += ", O=" + get_set_string(ms.break_set_);
+      // // now output according SCCs
+      // for (unsigned i = 0; i < acc_detsccs_.size(); i++)
+      // {
+      //   std::vector<state_rank> states = ms.detscc_ranks_[i];
+      //   res += ", " + get_det_string(states);
+      //   res += ", scc = " + std::to_string(acc_detsccs_[i]) + ", ";
+      // }
+
+      // res += "[";
+      // // now output nondeterministic sccs
+      // std::vector<std::set<unsigned>> nondets = ms.nondetscc_ranks_;
+      // for (unsigned i = 0; i < nondets.size(); i++)
+      // {
+      //   if (!first_state)
+      //     res += " ,";
+      //   first_state = false;
+      //   res += "(" + get_set_string(nondets[i]) + ", " + std::to_string((int)ms.nondetscc_marks_[i]) + ")";
+      // }
+      // res += "]";
+      // return res;
     }
     // From a Rank state, looks for a duplicate in the map before
     // creating a new state if needed.
@@ -1508,13 +1564,13 @@ namespace cola
       res_ = spot::make_twa_graph(aut->get_dict());
       res_->copy_ap_of(aut);
       res_->prop_copy(aut,
-                      {
-                          false,        // state based
-                          false,        // inherently_weak
-                          false, false, // deterministic
-                          true,         // complete
-                          false         // stutter inv
-                      });
+                        {
+                            false,        // state based
+                            false,        // inherently_weak
+                            false, false, // deterministic
+                            true,         // complete
+                            false         // stutter inv
+                        });
       // Generate bdd supports and compatible options for each state.
       // Also check if all its transitions are accepting.
       for (unsigned i = 0; i < nb_states_; ++i)
@@ -1541,9 +1597,9 @@ namespace cola
       // find out the DACs and NACs
       for (unsigned i = 0; i < scc_types_.size(); i++)
       {
-        // ignore weak types
-        if ((scc_types_[i] & SCC_WEAK_TYPE))
-          continue;
+        // // ignore weak types
+        // if ((scc_types_[i] & SCC_WEAK_TYPE))
+        //   continue;
         // max_colors_.push_back(-1);
         // min_colors_.push_back(INT_MAX);
         // accepting deterministic scc
@@ -1556,48 +1612,104 @@ namespace cola
           // accepting nondeterministic scc
           acc_nondetsccs_.emplace_back(i);
         }
+        else if (is_weakscc(scc_types_, i))
+        {
+          weaksccs_.push_back(i);
+        }
       }
 
-      // optimize with the fact of being unambiguous
-      use_unambiguous_ = use_unambiguous_ && is_unambiguous(aut);
-      if (show_names_)
-      {
-        names_ = new std::vector<std::string>();
-        res_->set_named_prop("state-names", names_);
-      }
+      // // optimize with the fact of being unambiguous
+      // use_unambiguous_ = use_unambiguous_ && is_unambiguous(aut);
+      // if (show_names_)
+      // {
+      //   names_ = new std::vector<std::string>();
+      //   res_->set_named_prop("state-names", names_);
+      // }
 
-      // we only handle one initial state
-      unsigned init_state = aut->get_init_state_number();
-      complement_mstate new_init_state(si_, acc_detsccs_.size());
-      unsigned init_scc = si_.scc_of(init_state);
+      // // we only handle one initial state
+      // unsigned init_state = aut->get_init_state_number();
+      // complement_mstate new_init_state(si_, acc_detsccs_.size());
+      // unsigned init_scc = si_.scc_of(init_state);
 
-      if ((scc_types_[init_scc] & SCC_WEAK_TYPE))
-      {
-        new_init_state.weak_set_.insert(init_state);
-      }
-      else if (is_accepting_detscc(scc_types_, init_scc))
-      {
-        // now it is in DAC
-        int init_scc_index = get_detscc_index(init_scc);
-        new_init_state.detscc_ranks_[init_scc_index].emplace_back(init_state, 0);
-      }
-      else if (is_accepting_nondetscc(scc_types_, init_scc))
-      {
-        // initialize the safra_node
-        int init_scc_index = get_nondetscc_index(init_scc);
-        assert(init_scc_index != -1);
-        std::set<unsigned> set;
-        set.insert(init_state);
-        new_init_state.nondetscc_ranks_.emplace_back(set);
-        new_init_state.nondetscc_marks_.emplace_back(None);
-      }
-      // we assume that the initial state is not in deterministic part
-      res_->set_init_state(new_state(new_init_state));
+      // if ((scc_types_[init_scc] & SCC_WEAK_TYPE))
+      // {
+      //   new_init_state.weak_set_.insert(init_state);
+      // }
+      // else if (is_accepting_detscc(scc_types_, init_scc))
+      // {
+      //   // now it is in DAC
+      //   int init_scc_index = get_detscc_index(init_scc);
+      //   new_init_state.detscc_ranks_[init_scc_index].emplace_back(init_state, 0);
+      // }
+      // else if (is_accepting_nondetscc(scc_types_, init_scc))
+      // {
+      //   // initialize the safra_node
+      //   int init_scc_index = get_nondetscc_index(init_scc);
+      //   assert(init_scc_index != -1);
+      //   std::set<unsigned> set;
+      //   set.insert(init_state);
+      //   new_init_state.nondetscc_ranks_.emplace_back(set);
+      //   new_init_state.nondetscc_marks_.emplace_back(None);
+      // }
+      // // we assume that the initial state is not in deterministic part
+      // res_->set_init_state(new_state(new_init_state));
+    }
+
+    unsigned 
+    get_num_states() 
+    {
+      return this->nb_states_;
+    }
+
+    spot::scc_info&
+    get_scc_info()
+    {
+      return this->si_;
     }
 
     spot::twa_graph_ptr
     run()
     {
+      /*********************************************/
+      // complementation algorithm
+      
+      // test: scc iteration
+      unsigned scc_count = get_scc_info().scc_count();
+      auto scc_types = get_scc_types(get_scc_info());
+      for (unsigned i=0; i<scc_count; i++){
+        if (is_weakscc(scc_types, i))
+          std::cerr << "Weak SCC" << std::endl;
+      }
+
+      // initial macrostate
+      auto scc_info = get_scc_info();
+      complement_mstate init_state(scc_info);
+      unsigned orig_init = aut_->get_init_state_number();
+      std::cerr << "Orig initial: " << orig_init << std::endl;
+      unsigned active_index = scc_info.scc_of(orig_init);
+      init_state.set_active_index(active_index);
+      
+      std::vector<std::vector<unsigned>> iw_sccs;
+      for (unsigned index : weaksccs_)
+      {
+        if (index != active_index)
+          iw_sccs.push_back(std::vector<unsigned>());
+        else 
+          iw_sccs.push_back(std::vector<unsigned>(1, orig_init));
+      }
+      init_state.set_iw_sccs(iw_sccs);
+      
+      // get break set for active scc
+      if (is_accepting_[orig_init])
+        init_state.set_iw_break_set(std::vector<unsigned>(1, orig_init));
+      else
+        init_state.set_iw_break_set(std::vector<unsigned>());
+      std::cerr << get_name(init_state) << std::endl;
+
+
+      throw std::runtime_error("complement_tnba() not ready"); //!
+      /*********************************************/
+      
       // Main stuff happens here
       // todo_ is a queue for handling states
       unsigned sink = INT_MAX;
@@ -1688,7 +1800,7 @@ namespace cola
   complement_tnba(const spot::const_twa_graph_ptr &aut, spot::option_map &om)
   {
     //if (!aut->acc().is_buchi() || !is_elevator_automaton(aut))
-    throw std::runtime_error("complement_tnba() not ready");
+    //throw std::runtime_error("complement_tnba() not ready"); //!
     const int trans_pruning = om.get(NUM_TRANS_PRUNING);
     // now we compute the simulator
     spot::const_twa_graph_ptr aut_reduced;
@@ -1705,7 +1817,10 @@ namespace cola
     else
       aut_reduced = aut;
     spot::scc_info scc(aut_reduced, spot::scc_info_options::ALL);
-    auto det = cola::tnba_complement(aut_reduced, scc, om, implications);
-    return det.run();
+
+    /*******************************************************************/
+    auto comp = cola::tnba_complement(aut_reduced, scc, om, implications);
+    return comp.run();
+    /*******************************************************************/
   }
 }
