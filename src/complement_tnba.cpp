@@ -794,11 +794,14 @@ namespace cola
     // source automaton
     const spot::const_twa_graph_ptr aut_;
     spot::scc_info scc_info_;
+    std::vector<bool> is_accepting_;
 
   public:
-    mh_complement(const spot::const_twa_graph_ptr& aut, spot::scc_info& scc_info) : aut_(aut), scc_info_(scc_info){}
+    mh_complement(const spot::const_twa_graph_ptr& aut, spot::scc_info& scc_info, std::vector<bool> is_accepting) : aut_(aut), scc_info_(scc_info), is_accepting_(is_accepting){}
 
     std::vector<std::pair<std::set<unsigned>, unsigned>> get_succ_track(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index);
+    std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index, std::vector<unsigned> break_set);
+
     std::set<unsigned> get_all_successors(std::set<unsigned> current_states, bdd symbol);
   };
 
@@ -812,6 +815,27 @@ namespace cola
     std::set_intersection(all_succ.begin(), all_succ.end(), scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
 
     succ.push_back({succ_in_scc, 0});
+
+    return succ;
+  }
+
+  std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> 
+  mh_complement::get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index, std::vector<unsigned> break_set)
+  {
+    std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> succ;
+
+    std::set<unsigned> all_succ = this->get_all_successors(reachable, symbol);
+    std::set<unsigned> succ_in_scc;
+    std::set_intersection(all_succ.begin(), all_succ.end(), scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
+
+    std::set<unsigned> new_break_set;
+    for (auto s : succ_in_scc)
+    {
+      if (is_accepting_[s])
+        new_break_set.insert(s);
+    }
+
+    succ.push_back({{succ_in_scc, new_break_set}, 0});
 
     return succ;
   }
@@ -1757,7 +1781,7 @@ namespace cola
       std::cerr << "Initial: " << get_name(init_state) << std::endl;
       auto init = new_state(init_state);
 
-      mh_complement mh(aut_, scc_info);
+      mh_complement mh(aut_, scc_info, is_accepting_);
 
       while (!todo_.empty())
       {
@@ -1793,7 +1817,6 @@ namespace cola
 
           for (unsigned i=0; i<scc_info.scc_count(); i++)
           {
-            // TODO test: getSuccTrack
             if (active_index != i)
             {
               // non-active scc
@@ -1801,6 +1824,7 @@ namespace cola
               std::set<unsigned> reach_track;
               std::set_intersection(scc_info.states_of(i).begin(), scc_info.states_of(i).end(), reachable.begin(), reachable.end(), std::inserter(reach_track, reach_track.begin()));
 
+              // test: getSuccTrack
               auto succ_track = mh.get_succ_track(reachable, reach_track, letter, i);
               std::cerr << "GetSuccTrack: ";
               for (auto succ : succ_track)
@@ -1808,9 +1832,17 @@ namespace cola
                 std::cerr << get_set_string(succ.first) << "+" << succ.second << " ";
               }
               std::cerr << std::endl;
+
+              // TODO test: getSuccTrackToActive
+              auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, i, ms.iw_break_set_);
+              std::cerr << "GetSuccTrackToActive: ";
+              for (auto succ : succ_track_to_active)
+              {
+                std::cerr << get_set_string(succ.first.first) << "+" << get_set_string(succ.first.second) << "+" << succ.second << " ";
+              }
+              std::cerr << std::endl;
             }
   
-            // TODO test: getSuccTrackToActive
             // TODO test: getSuccActive
           }
         }
