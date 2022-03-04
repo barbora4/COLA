@@ -100,6 +100,10 @@ namespace cola
         this->nondetscc_ranks_.emplace_back(copy);
         this->nondetscc_marks_.push_back(other.nondetscc_marks_[i]);
       }
+
+      this->set_iw_sccs(other.iw_sccs_);
+      this->set_iw_break_set(other.iw_break_set_);
+      this->set_active_index(other.active_index_);
     }
 
     /******/
@@ -143,6 +147,10 @@ namespace cola
         this->nondetscc_ranks_.emplace_back(copy);
         this->nondetscc_marks_.push_back(other.nondetscc_marks_[i]);
       }
+
+      this->set_iw_sccs(other.iw_sccs_);
+      this->set_iw_break_set(other.iw_break_set_);
+      this->set_active_index(other.active_index_);
 
       return *this;
     }
@@ -294,6 +302,10 @@ namespace cola
       }
     }
     for (auto &p : nondetscc_ranks_)
+    {
+      result.insert(p.begin(), p.end());
+    }
+    for (auto &p : iw_sccs_)
     {
       result.insert(p.begin(), p.end());
     }
@@ -781,10 +793,48 @@ namespace cola
   private:
     // source automaton
     const spot::const_twa_graph_ptr aut_;
+    spot::scc_info scc_info_;
 
   public:
-    mh_complement(const spot::const_twa_graph_ptr& aut) : aut_(aut){}
+    mh_complement(const spot::const_twa_graph_ptr& aut, spot::scc_info& scc_info) : aut_(aut), scc_info_(scc_info){}
+
+    std::vector<std::pair<std::set<unsigned>, unsigned>> get_succ_track(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index);
+    std::set<unsigned> get_all_successors(std::set<unsigned> current_states, bdd symbol);
   };
+
+  std::vector<std::pair<std::set<unsigned>, unsigned>> 
+  mh_complement::get_succ_track(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index)
+  {
+    std::vector<std::pair<std::set<unsigned>, unsigned>> succ;
+
+    std::set<unsigned> all_succ = this->get_all_successors(reachable, symbol);
+    std::set<unsigned> succ_in_scc;
+    std::set_intersection(all_succ.begin(), all_succ.end(), scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
+
+    succ.push_back({succ_in_scc, 0});
+
+    return succ;
+  }
+
+  std::set<unsigned> 
+  mh_complement::get_all_successors(std::set<unsigned> current_states, bdd symbol)
+  {
+    std::set<unsigned> successors;
+
+    for (unsigned s : current_states)
+    {
+      for (const auto &t : aut_->out(s))
+      {
+        if (!bdd_implies(symbol, t.cond))
+          continue;
+
+        std::cerr << "Successor: " << t.dst << std::endl;
+        successors.insert(t.dst);
+      }
+    }
+
+    return successors;
+  }
   /***********************************************************************/
 
   // complementation Buchi automata
@@ -1704,7 +1754,68 @@ namespace cola
         init_state.set_iw_break_set(std::vector<unsigned>(1, orig_init));
       else
         init_state.set_iw_break_set(std::vector<unsigned>());
-      std::cerr << get_name(init_state) << std::endl;
+      std::cerr << "Initial: " << get_name(init_state) << std::endl;
+      auto init = new_state(init_state);
+
+      mh_complement mh(aut_, scc_info);
+
+      while (!todo_.empty())
+      {
+        auto top = todo_.front();
+        todo_.pop_front();
+        complement_mstate ms = top.first;
+        std::cerr << "State: " << get_name(ms) << std::endl;
+
+        // reachable states
+        std::set<unsigned> reachable;
+        for (auto scc : ms.iw_sccs_)
+        {
+          reachable.insert(scc.begin(), scc.end());
+        }
+
+        // Compute support of all available states.
+        bdd msupport = bddtrue;
+        bdd n_s_compat = bddfalse;
+        const std::set<unsigned> &reach_set = ms.get_reach_set();
+        // compute the occurred variables in the outgoing transitions of ms, stored in msupport
+        for (unsigned s : reach_set)
+        {
+          msupport &= support_[s];
+          n_s_compat |= compat_[s];
+        }
+
+        bdd all = n_s_compat;
+        while (all != bddfalse)
+        {
+          bdd letter = bdd_satoneset(all, msupport, bddfalse);
+          all -= letter;
+          std::cerr << "Current symbol: " << letter << std::endl;
+
+          for (unsigned i=0; i<scc_info.scc_count(); i++)
+          {
+            // TODO test: getSuccTrack
+            if (active_index != i)
+            {
+              // non-active scc
+              // reachable states in this scc
+              std::set<unsigned> reach_track;
+              std::set_intersection(scc_info.states_of(i).begin(), scc_info.states_of(i).end(), reachable.begin(), reachable.end(), std::inserter(reach_track, reach_track.begin()));
+
+              auto succ_track = mh.get_succ_track(reachable, reach_track, letter, i);
+              std::cerr << "GetSuccTrack: ";
+              for (auto succ : succ_track)
+              {
+                std::cerr << get_set_string(succ.first) << "+" << succ.second << " ";
+              }
+              std::cerr << std::endl;
+            }
+  
+            // TODO test: getSuccTrackToActive
+            // TODO test: getSuccActive
+          }
+        }
+
+      }
 
 
       throw std::runtime_error("complement_tnba() not ready"); //!
