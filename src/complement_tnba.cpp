@@ -800,7 +800,8 @@ namespace cola
     mh_complement(const spot::const_twa_graph_ptr& aut, spot::scc_info& scc_info, std::vector<bool> is_accepting) : aut_(aut), scc_info_(scc_info), is_accepting_(is_accepting){}
 
     std::vector<std::pair<std::set<unsigned>, unsigned>> get_succ_track(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index);
-    std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index, std::vector<unsigned> break_set);
+    std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index);
+    std::pair<std::vector<std::pair<std::set<unsigned>, unsigned>>, std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>> get_succ_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_indenx, std::vector<unsigned> break_set);
 
     std::set<unsigned> get_all_successors(std::set<unsigned> current_states, bdd symbol);
   };
@@ -820,7 +821,7 @@ namespace cola
   }
 
   std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> 
-  mh_complement::get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index, std::vector<unsigned> break_set)
+  mh_complement::get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index)
   {
     std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> succ;
 
@@ -838,6 +839,50 @@ namespace cola
     succ.push_back({{succ_in_scc, new_break_set}, 0});
 
     return succ;
+  }
+
+  std::pair<std::vector<std::pair<std::set<unsigned>, unsigned>>, std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>> 
+  mh_complement::get_succ_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index, std::vector<unsigned> break_set)
+  {
+    std::vector<std::pair<std::set<unsigned>, unsigned>> succ_tt;
+    std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> succ_at;
+
+    if (break_set.empty())
+    {
+      // empty break set -> return TT and switch to other scc
+      succ_tt = get_succ_track(reachable, reach_in_scc, symbol, scc_index);
+      for (auto &succ : succ_tt)
+      {
+        succ.second = 1;
+      }
+    }
+    else 
+    {
+      // return AT and stay in the same scc
+      std::set<unsigned> all_succ = this->get_all_successors(reachable, symbol);
+      std::set<unsigned> succ_in_scc;
+      std::set_intersection(all_succ.begin(), all_succ.end(), scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
+
+      std::set<unsigned> break_set_succ = this->get_all_successors(std::set<unsigned>(break_set.begin(), break_set.end()), symbol);
+      std::set<unsigned> reach_not_in_scc;
+      std::set_difference(reachable.begin(), reachable.end(), reach_in_scc.begin(), reach_in_scc.end(), std::inserter(reach_not_in_scc, reach_not_in_scc.begin()));
+      std::set<unsigned> not_scc_succ = this->get_all_successors(reach_not_in_scc, symbol);
+      std::set<unsigned> not_scc_succ_curr;
+      std::set_intersection(not_scc_succ.begin(), not_scc_succ.end(), scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end(), std::inserter(not_scc_succ_curr, not_scc_succ_curr.begin()));
+      break_set_succ.insert(not_scc_succ_curr.begin(), not_scc_succ_curr.end());
+      std::set<unsigned> inter;
+      std::set_intersection(break_set_succ.begin(), break_set_succ.end(), succ_in_scc.begin(), succ_in_scc.end(), std::inserter(inter, inter.begin()));
+
+      std::set<unsigned> new_break_set;
+      for (auto s : inter)
+      {
+        if (is_accepting_[s])
+          new_break_set.insert(s);
+      }
+      succ_at.push_back({{succ_in_scc, new_break_set}, 0});
+    }
+
+    return {succ_tt, succ_at};
   }
 
   std::set<unsigned> 
@@ -1817,12 +1862,13 @@ namespace cola
 
           for (unsigned i=0; i<scc_info.scc_count(); i++)
           {
+            // reachable states in this scc
+            std::set<unsigned> reach_track;
+            std::set_intersection(scc_info.states_of(i).begin(), scc_info.states_of(i).end(), reachable.begin(), reachable.end(), std::inserter(reach_track, reach_track.begin()));
+
             if (active_index != i)
             {
               // non-active scc
-              // reachable states in this scc
-              std::set<unsigned> reach_track;
-              std::set_intersection(scc_info.states_of(i).begin(), scc_info.states_of(i).end(), reachable.begin(), reachable.end(), std::inserter(reach_track, reach_track.begin()));
 
               // test: getSuccTrack
               auto succ_track = mh.get_succ_track(reachable, reach_track, letter, i);
@@ -1833,8 +1879,8 @@ namespace cola
               }
               std::cerr << std::endl;
 
-              // TODO test: getSuccTrackToActive
-              auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, i, ms.iw_break_set_);
+              // test: getSuccTrackToActive
+              auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, i);
               std::cerr << "GetSuccTrackToActive: ";
               for (auto succ : succ_track_to_active)
               {
@@ -1843,7 +1889,22 @@ namespace cola
               std::cerr << std::endl;
             }
   
-            // TODO test: getSuccActive
+            else 
+            {
+              // test: getSuccActive
+              auto succ_active = mh.get_succ_active(reachable, reach_track, letter, i, ms.iw_break_set_);
+              std::cerr << "GetSuccActive: TT: ";
+              for (auto succ_tt : succ_active.first)
+              {
+                std::cerr << get_set_string(succ_tt.first) << "+" << succ_tt.second << " ";
+              }
+              std::cerr << ", AT: ";
+              for (auto succ_at : succ_active.second)
+              {
+                std::cerr << get_set_string(succ_at.first.first) << "+" << get_set_string(succ_at.first.second) << "+" << succ_at.second << " ";
+              }
+              std::cerr << std::endl;
+            }
           }
         }
 
