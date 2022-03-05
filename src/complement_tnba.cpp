@@ -208,82 +208,113 @@ namespace cola
   bool
   complement_mstate::operator<(const complement_mstate &other) const
   {
-    if (weak_set_ == other.weak_set_)
+    if (active_index_ == other.active_index_)
     {
-      if (break_set_ == other.break_set_)
+      if (iw_sccs_ == other.iw_sccs_)
       {
-        for (unsigned i = 0; i < detscc_ranks_.size(); i++)
+        if (iw_break_set_ == other.iw_break_set_)
         {
-          if (detscc_ranks_[i] == other.detscc_ranks_[i])
-          {
-            continue;
-          }
-          else
-          {
-            return detscc_ranks_[i] < other.detscc_ranks_[i];
-          }
+          return false;
         }
-        for (unsigned i = 0; i < nondetscc_ranks_.size(); i++)
+        else 
         {
-          if (nondetscc_ranks_[i] == other.nondetscc_ranks_[i])
-          {
-            if (nondetscc_marks_[i] == other.nondetscc_marks_[i])
-            {
-              continue;
-            }
-            else
-            {
-              return nondetscc_marks_[i] < other.nondetscc_marks_[i];
-            }
-          }
-          else
-          {
-            return nondetscc_ranks_[i] < other.nondetscc_ranks_[i];
-          }
+          return iw_break_set_ < other.iw_break_set_;
         }
-        return false;
       }
-      else
+      else 
       {
-        return break_set_ < other.break_set_;
+        return iw_sccs_ < other.iw_sccs_;
       }
     }
     else
     {
-      return weak_set_ < other.weak_set_;
+      return active_index_ < other.active_index_;
     }
+    
+    // if (weak_set_ == other.weak_set_)
+    // {
+    //   if (break_set_ == other.break_set_)
+    //   {
+    //     for (unsigned i = 0; i < detscc_ranks_.size(); i++)
+    //     {
+    //       if (detscc_ranks_[i] == other.detscc_ranks_[i])
+    //       {
+    //         continue;
+    //       }
+    //       else
+    //       {
+    //         return detscc_ranks_[i] < other.detscc_ranks_[i];
+    //       }
+    //     }
+    //     for (unsigned i = 0; i < nondetscc_ranks_.size(); i++)
+    //     {
+    //       if (nondetscc_ranks_[i] == other.nondetscc_ranks_[i])
+    //       {
+    //         if (nondetscc_marks_[i] == other.nondetscc_marks_[i])
+    //         {
+    //           continue;
+    //         }
+    //         else
+    //         {
+    //           return nondetscc_marks_[i] < other.nondetscc_marks_[i];
+    //         }
+    //       }
+    //       else
+    //       {
+    //         return nondetscc_ranks_[i] < other.nondetscc_ranks_[i];
+    //       }
+    //     }
+    //     return false;
+    //   }
+    //   else
+    //   {
+    //     return break_set_ < other.break_set_;
+    //   }
+    // }
+    // else
+    // {
+    //   return weak_set_ < other.weak_set_;
+    // }
   }
   bool
   complement_mstate::operator==(const complement_mstate &other) const
   {
-    if (this->weak_set_ != other.weak_set_)
-    {
+    if (this->active_index_ != other.active_index_)
       return false;
-    }
-    if (this->break_set_ != other.break_set_)
-    {
+    if (this->iw_sccs_ != other.iw_sccs_)
       return false;
-    }
-    for (unsigned i = 0; i < detscc_ranks_.size(); i++)
-    {
-      if (detscc_ranks_[i] != other.detscc_ranks_[i])
-      {
-        return false;
-      }
-    }
-
-    for (unsigned i = 0; i < nondetscc_ranks_.size(); i++)
-    {
-      if (nondetscc_ranks_[i] != other.nondetscc_ranks_[i])
-      {
-        return false;
-      }
-      if (nondetscc_marks_[i] != other.nondetscc_marks_[i])
-      {
-        return false;
-      }
-    }
+    if (this->iw_break_set_ != other.iw_break_set_)
+      return false;
     return true;
+    
+    // if (this->weak_set_ != other.weak_set_)
+    // {
+    //   return false;
+    // }
+    // if (this->break_set_ != other.break_set_)
+    // {
+    //   return false;
+    // }
+    // for (unsigned i = 0; i < detscc_ranks_.size(); i++)
+    // {
+    //   if (detscc_ranks_[i] != other.detscc_ranks_[i])
+    //   {
+    //     return false;
+    //   }
+    // }
+
+    // for (unsigned i = 0; i < nondetscc_ranks_.size(); i++)
+    // {
+    //   if (nondetscc_ranks_[i] != other.nondetscc_ranks_[i])
+    //   {
+    //     return false;
+    //   }
+    //   if (nondetscc_marks_[i] != other.nondetscc_marks_[i])
+    //   {
+    //     return false;
+    //   }
+    // }
+    // return true;
   }
   int complement_mstate::get_max_rank() const
   {
@@ -1042,15 +1073,20 @@ namespace cola
     new_state(complement_mstate &s)
     {
       complement_mstate dup(s);
-      auto p = rank2n_.emplace(dup, 0);
-      if (p.second) // This is a new state
-      {
-        p.first->second = res_->new_state();
-        if (show_names_)
-          names_->push_back(get_name(p.first->first));
-        todo_.emplace_back(dup, p.first->second);
-      }
-      return p.first->second;
+      auto p = res_->new_state();
+      todo_.emplace_back(dup, p);
+      return p;
+
+      // complement_mstate dup(s);
+      // auto p = rank2n_.emplace(dup, 0);
+      // if (p.second) // This is a new state
+      // {
+      //   p.first->second = res_->new_state();
+      //   if (show_names_)
+      //     names_->push_back(get_name(p.first->first));
+      //   todo_.emplace_back(dup, p.first->second);
+      // }
+      // return p.first->second;
     }
 
     bool exists(complement_mstate &s)
@@ -1826,6 +1862,9 @@ namespace cola
       std::cerr << "Initial: " << get_name(init_state) << std::endl;
       auto init = new_state(init_state);
 
+      std::vector<complement_mstate> all_states;
+      all_states.push_back(init_state);
+
       mh_complement mh(aut_, scc_info, is_accepting_);
 
       while (!todo_.empty())
@@ -1834,6 +1873,7 @@ namespace cola
         todo_.pop_front();
         complement_mstate ms = top.first;
         std::cerr << "State: " << get_name(ms) << std::endl;
+        active_index = ms.active_index_;
 
         // reachable states
         std::set<unsigned> reachable;
@@ -1860,33 +1900,48 @@ namespace cola
           all -= letter;
           std::cerr << "Current symbol: " << letter << std::endl;
 
+          bool active_type = true;
+          complement_mstate new_succ(scc_info);
+          std::vector<std::vector<unsigned>> iw_succ(ms.iw_sccs_.size());
+
           for (unsigned i=0; i<scc_info.scc_count(); i++)
           {
+            unsigned index = (active_index + i)%scc_info.scc_count();
+
             // reachable states in this scc
             std::set<unsigned> reach_track;
-            std::set_intersection(scc_info.states_of(i).begin(), scc_info.states_of(i).end(), reachable.begin(), reachable.end(), std::inserter(reach_track, reach_track.begin()));
+            std::set_intersection(scc_info.states_of(index).begin(), scc_info.states_of(index).end(), reachable.begin(), reachable.end(), std::inserter(reach_track, reach_track.begin()));
 
-            if (active_index != i)
+            if (active_index != index)
             {
               // non-active scc
 
               // test: getSuccTrack
-              auto succ_track = mh.get_succ_track(reachable, reach_track, letter, i);
-              std::cerr << "GetSuccTrack: ";
-              for (auto succ : succ_track)
+              if (active_type or (index != (active_index+1)%scc_info.scc_count()))
               {
-                std::cerr << get_set_string(succ.first) << "+" << succ.second << " ";
+                auto succ_track = mh.get_succ_track(reachable, reach_track, letter, i);
+                std::cerr << "GetSuccTrack: ";
+                for (auto succ : succ_track)
+                {
+                  std::cerr << get_set_string(succ.first) << "+" << succ.second << " ";
+                  iw_succ[index] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
+                }
+                std::cerr << std::endl;
               }
-              std::cerr << std::endl;
 
               // test: getSuccTrackToActive
-              auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, i);
-              std::cerr << "GetSuccTrackToActive: ";
-              for (auto succ : succ_track_to_active)
+              else 
               {
-                std::cerr << get_set_string(succ.first.first) << "+" << get_set_string(succ.first.second) << "+" << succ.second << " ";
+                auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, i);
+                std::cerr << "GetSuccTrackToActive: ";
+                for (auto succ : succ_track_to_active)
+                {
+                  std::cerr << get_set_string(succ.first.first) << "+" << get_set_string(succ.first.second) << "+" << succ.second << " ";
+                  iw_succ[index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+                  new_succ.set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+                }
+                std::cerr << std::endl;
               }
-              std::cerr << std::endl;
             }
   
             else 
@@ -1897,14 +1952,31 @@ namespace cola
               for (auto succ_tt : succ_active.first)
               {
                 std::cerr << get_set_string(succ_tt.first) << "+" << succ_tt.second << " ";
+                iw_succ[index] = std::vector<unsigned>(succ_tt.first.begin(), succ_tt.first.end());
               }
               std::cerr << ", AT: ";
               for (auto succ_at : succ_active.second)
               {
                 std::cerr << get_set_string(succ_at.first.first) << "+" << get_set_string(succ_at.first.second) << "+" << succ_at.second << " ";
+                iw_succ[index] = std::vector<unsigned>(succ_at.first.first.begin(), succ_at.first.first.end());
+                new_succ.set_iw_break_set(std::vector<unsigned>(succ_at.first.second.begin(), succ_at.first.second.end()));
               }
               std::cerr << std::endl;
+
+              if (succ_active.first.size() > 0)
+                active_type = false;
             }
+          }
+
+          if (not active_type)
+            new_succ.set_active_index((active_index + 1)%scc_info.scc_count());
+          new_succ.set_iw_sccs(iw_succ);
+
+          std::cerr << "New succ: " << get_name(new_succ) << std::endl;
+          if (std::find(all_states.begin(), all_states.end(), new_succ) == all_states.end())
+          {
+            all_states.push_back(new_succ);
+            auto s = new_state(new_succ);
           }
         }
 
