@@ -174,7 +174,7 @@ namespace cola
     /*******/
     std::vector<std::vector<unsigned>> iw_sccs_;
     std::vector<unsigned> iw_break_set_;
-    int active_index_;
+    int active_index_ = 0;
 
     void 
     set_iw_sccs(std::vector<std::vector<unsigned>> iw_sccs)
@@ -1039,6 +1039,8 @@ namespace cola
       name += ",";
       const std::set<unsigned> breakset(ms.break_set_.begin(), ms.break_set_.end());
       name += get_set_string(breakset);
+      name += ",";
+      name += std::to_string(ms.active_index_);
       name += ")";
       return name;
 
@@ -1072,21 +1074,22 @@ namespace cola
     unsigned
     new_state(complement_mstate &s)
     {
-      complement_mstate dup(s);
-      auto p = res_->new_state();
-      todo_.emplace_back(dup, p);
-      return p;
-
       // complement_mstate dup(s);
-      // auto p = rank2n_.emplace(dup, 0);
-      // if (p.second) // This is a new state
-      // {
-      //   p.first->second = res_->new_state();
-      //   if (show_names_)
-      //     names_->push_back(get_name(p.first->first));
-      //   todo_.emplace_back(dup, p.first->second);
-      // }
-      // return p.first->second;
+      // auto ns = rank2n_.emplace(dup, 0);
+      // auto p = res_->new_state();
+      // todo_.emplace_back(dup, p);
+      // return p;
+
+      complement_mstate dup(s);
+      auto p = rank2n_.emplace(dup, 0);
+      if (p.second) // This is a new state
+      {
+        p.first->second = res_->new_state();
+        if (show_names_)
+          names_->push_back(get_name(p.first->first));
+        todo_.emplace_back(dup, p.first->second);
+      }
+      return p.first->second;
     }
 
     bool exists(complement_mstate &s)
@@ -1827,6 +1830,7 @@ namespace cola
     {
       /*********************************************/
       // complementation algorithm
+      auto acc = res_->set_buchi();
       
       // test: scc iteration
       unsigned scc_count = get_scc_info().scc_count();
@@ -1866,6 +1870,7 @@ namespace cola
       all_states.push_back(init_state);
 
       mh_complement mh(aut_, scc_info, is_accepting_);
+      bool sink_state = false;
 
       while (!todo_.empty())
       {
@@ -1894,6 +1899,21 @@ namespace cola
         }
 
         bdd all = n_s_compat;
+        if (all != bddtrue)
+        {
+          // direct the rest to sink state
+          complement_mstate succ(si_);
+          succ.active_index_ = -1;
+          auto sink = new_state(succ);
+          // empty state use 0 as well as the weak ones
+          res_->new_edge(top.second, sink, !all);
+          if (not sink_state)
+          {
+            res_->new_edge(sink, sink, !all, acc);
+            res_->new_edge(sink, sink, all, acc);
+            sink_state = true;
+          }
+        }
         while (all != bddfalse)
         {
           bdd letter = bdd_satoneset(all, msupport, bddfalse);
@@ -1919,7 +1939,7 @@ namespace cola
               // test: getSuccTrack
               if (active_type or (index != (active_index+1)%scc_info.scc_count()))
               {
-                auto succ_track = mh.get_succ_track(reachable, reach_track, letter, i);
+                auto succ_track = mh.get_succ_track(reachable, reach_track, letter, index);
                 std::cerr << "GetSuccTrack: ";
                 for (auto succ : succ_track)
                 {
@@ -1932,7 +1952,7 @@ namespace cola
               // test: getSuccTrackToActive
               else 
               {
-                auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, i);
+                auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
                 std::cerr << "GetSuccTrackToActive: ";
                 for (auto succ : succ_track_to_active)
                 {
@@ -1947,7 +1967,7 @@ namespace cola
             else 
             {
               // test: getSuccActive
-              auto succ_active = mh.get_succ_active(reachable, reach_track, letter, i, ms.iw_break_set_);
+              auto succ_active = mh.get_succ_active(reachable, reach_track, letter, index, ms.iw_break_set_);
               std::cerr << "GetSuccActive: TT: ";
               for (auto succ_tt : succ_active.first)
               {
@@ -1970,6 +1990,8 @@ namespace cola
 
           if (not active_type)
             new_succ.set_active_index((active_index + 1)%scc_info.scc_count());
+          else
+            new_succ.set_active_index(active_index);
           new_succ.set_iw_sccs(iw_succ);
 
           std::cerr << "New succ: " << get_name(new_succ) << std::endl;
@@ -1978,10 +2000,19 @@ namespace cola
             all_states.push_back(new_succ);
             auto s = new_state(new_succ);
           }
+
+          auto p = rank2n_.emplace(new_succ, 0);
+          if (active_type)
+            res_->new_edge(top.second, p.first->second, letter);
+          else
+            res_->new_edge(top.second, p.first->second, letter, acc);
         }
 
       }
 
+      spot::print_hoa(std::cout, res_);
+      return res_;
+      
 
       throw std::runtime_error("complement_tnba() not ready"); //!
       /*********************************************/
