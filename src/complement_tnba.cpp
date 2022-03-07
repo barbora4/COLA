@@ -104,6 +104,7 @@ namespace cola
       this->set_iw_sccs(other.iw_sccs_);
       this->set_iw_break_set(other.iw_break_set_);
       this->set_active_index(other.active_index_);
+      this->set_acc_detsccs(other.acc_detsccs_);
     }
 
     /******/
@@ -151,6 +152,7 @@ namespace cola
       this->set_iw_sccs(other.iw_sccs_);
       this->set_iw_break_set(other.iw_break_set_);
       this->set_active_index(other.active_index_);
+      this->set_acc_detsccs(other.acc_detsccs_);
 
       return *this;
     }
@@ -173,6 +175,7 @@ namespace cola
 
     /*******/
     std::vector<std::vector<unsigned>> iw_sccs_;
+    std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_detsccs_;
     std::vector<unsigned> iw_break_set_;
     int active_index_ = 0;
 
@@ -180,6 +183,12 @@ namespace cola
     set_iw_sccs(std::vector<std::vector<unsigned>> iw_sccs)
     {
       this->iw_sccs_ = iw_sccs;
+    }
+
+    void
+    set_acc_detsccs(std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_detsccs)
+    {
+      this->acc_detsccs_ = acc_detsccs;
     }
 
     void
@@ -214,7 +223,14 @@ namespace cola
       {
         if (iw_break_set_ == other.iw_break_set_)
         {
-          return false;
+          if (acc_detsccs_ == other.acc_detsccs_)
+          {
+            return false;
+          }
+          else
+          {
+            return acc_detsccs_ < other.acc_detsccs_;
+          }
         }
         else
         {
@@ -284,6 +300,8 @@ namespace cola
     if (this->iw_sccs_ != other.iw_sccs_)
       return false;
     if (this->iw_break_set_ != other.iw_break_set_)
+      return false;
+    if (this->acc_detsccs_ != other.acc_detsccs_)
       return false;
     return true;
 
@@ -1009,12 +1027,12 @@ namespace cola
     // State names for graphviz display
     std::vector<std::string> *names_;
 
+    // the index of each weak SCCs
+    std::vector<unsigned> weaksccs_;
     // the index of each deterministic accepting SCCs
     std::vector<unsigned> acc_detsccs_;
     // the index of each deterministic accepting SCCs
     std::vector<unsigned> acc_nondetsccs_;
-    // the index of each weak SCCs
-    std::vector<unsigned> weaksccs_;
 
     // Show Rank states in state name to help debug
     bool show_names_;
@@ -1043,9 +1061,19 @@ namespace cola
       // only for weak sccs so far
       std::string name;
       name += "(";
-      for (auto partial : ms.iw_sccs_){
+      for (auto partial : ms.iw_sccs_)
+      {
         const std::set<unsigned> tmp(partial.begin(), partial.end());
         name += get_set_string(tmp);
+      }
+      name += ",";
+      for (auto partial : ms.acc_detsccs_)
+      {
+        const std::set<unsigned> tmp(partial.first.begin(), partial.first.end());
+        name += get_set_string(tmp);
+        name += "+";
+        const std::set<unsigned> aux(partial.second.begin(), partial.second.end());
+        name += get_set_string(aux);
       }
       name += ",";
       const std::set<unsigned> breakset(ms.iw_break_set_.begin(), ms.iw_break_set_.end());
@@ -1848,7 +1876,9 @@ namespace cola
       unsigned scc_count = get_scc_info().scc_count();
       auto scc_types = get_scc_types(get_scc_info());
       for (unsigned i=0; i<scc_count; i++){
-        if (is_weakscc(scc_types, i))
+        if (is_accepting_detscc(scc_types, i))
+          std::cerr << "Det SCC" << std::endl;
+        else if (is_weakscc(scc_types, i))
           std::cerr << "Weak SCC" << std::endl;
       }
 
@@ -1861,6 +1891,7 @@ namespace cola
       init_state.set_active_index(active_index);
 
       std::vector<std::vector<unsigned>> iw_sccs;
+      std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_detsccs;
       for (unsigned index : weaksccs_)
       {
         if (index != active_index)
@@ -1868,14 +1899,27 @@ namespace cola
         else
           iw_sccs.push_back(std::vector<unsigned>(1, orig_init));
       }
+      for (unsigned index : acc_detsccs_)
+      {
+        if (index != active_index)
+          acc_detsccs.push_back({std::vector<unsigned>(), std::vector<unsigned>()});
+        else
+          acc_detsccs.push_back({std::vector<unsigned>(1, orig_init), std::vector<unsigned>()});
+      }
       init_state.set_iw_sccs(iw_sccs);
+      init_state.set_acc_detsccs(acc_detsccs);
+
 
       // get break set for active scc
-      if (is_accepting_weakscc(scc_types_, active_index)){ // continue here
+      // continue here
+      if (is_accepting_weakscc(scc_types_, active_index) or is_accepting_detscc(scc_types_, active_index))
+      { 
         init_state.set_iw_break_set(std::vector<unsigned>(1, orig_init));
       }
       else
+      {
         init_state.set_iw_break_set(std::vector<unsigned>());
+      }
       std::cerr << "Initial: " << get_name(init_state) << std::endl;
       auto init = new_state(init_state);
 
@@ -1898,6 +1942,10 @@ namespace cola
         for (auto scc : ms.iw_sccs_)
         {
           reachable.insert(scc.begin(), scc.end());
+        }
+        for (auto scc : ms.acc_detsccs_)
+        {
+          reachable.insert(scc.first.begin(), scc.first.end());
         }
 
         // Compute support of all available states.
@@ -1936,10 +1984,21 @@ namespace cola
           bool active_type = true;
           complement_mstate new_succ(scc_info);
           std::vector<std::vector<unsigned>> iw_succ(ms.iw_sccs_.size());
+          std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_det_succ(ms.acc_detsccs_.size());
 
-          for (unsigned i=0; i<scc_info.scc_count(); i++)
+          // scc indices
+          std::vector<unsigned> indices(this->weaksccs_.begin(), this->weaksccs_.end());
+          indices.insert(indices.end(), this->acc_detsccs_.begin(), this->acc_detsccs_.end());
+          // index of value active_index
+          auto it = std::find(indices.begin(), indices.end(), active_index);
+          unsigned true_index = std::distance(indices.begin(), it);
+          unsigned orig_index = true_index;
+
+          // continue here
+          for (unsigned i=0; i<indices.size(); i++)
           {
-            unsigned index = (active_index + i)%scc_info.scc_count();
+            true_index = (orig_index+i)%indices.size();
+            unsigned index = indices[true_index];
 
             // reachable states in this scc
             std::set<unsigned> reach_track;
@@ -1950,14 +2009,14 @@ namespace cola
               // non-active scc
 
               // test: getSuccTrack
-              if (active_type or (index != (active_index+1)%scc_info.scc_count()))
+              if (active_type or (index != (indices[(orig_index + 1)%indices.size()])))
               {
                 auto succ_track = mh.get_succ_track(reachable, reach_track, letter, index);
                 std::cerr << "GetSuccTrack: ";
                 for (auto succ : succ_track)
                 {
                   std::cerr << get_set_string(succ.first) << "+" << succ.second << " ";
-                  iw_succ[index] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
+                  iw_succ[true_index] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
                 }
                 std::cerr << std::endl;
               }
@@ -1970,7 +2029,7 @@ namespace cola
                 for (auto succ : succ_track_to_active)
                 {
                   std::cerr << get_set_string(succ.first.first) << "+" << get_set_string(succ.first.second) << "+" << succ.second << " ";
-                  iw_succ[index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+                  iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
                   new_succ.set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
                 }
                 std::cerr << std::endl;
@@ -1985,13 +2044,13 @@ namespace cola
               for (auto succ_tt : succ_active.first)
               {
                 std::cerr << get_set_string(succ_tt.first) << "+" << succ_tt.second << " ";
-                iw_succ[index] = std::vector<unsigned>(succ_tt.first.begin(), succ_tt.first.end());
+                iw_succ[true_index] = std::vector<unsigned>(succ_tt.first.begin(), succ_tt.first.end());
               }
               std::cerr << ", AT: ";
               for (auto succ_at : succ_active.second)
               {
                 std::cerr << get_set_string(succ_at.first.first) << "+" << get_set_string(succ_at.first.second) << "+" << succ_at.second << " ";
-                iw_succ[index] = std::vector<unsigned>(succ_at.first.first.begin(), succ_at.first.first.end());
+                iw_succ[true_index] = std::vector<unsigned>(succ_at.first.first.begin(), succ_at.first.first.end());
                 new_succ.set_iw_break_set(std::vector<unsigned>(succ_at.first.second.begin(), succ_at.first.second.end()));
               }
               std::cerr << std::endl;
@@ -2001,8 +2060,9 @@ namespace cola
             }
           }
 
-          if (not active_type)
-            new_succ.set_active_index((active_index + 1)%scc_info.scc_count());
+          if (not active_type){
+            new_succ.set_active_index((indices[(orig_index + 1)%indices.size()]));
+          }
           else
             new_succ.set_active_index(active_index);
           new_succ.set_iw_sccs(iw_succ);
@@ -2024,6 +2084,7 @@ namespace cola
       }
 
       spot::print_hoa(std::cerr, res_);
+      std::cerr << std::endl;
       return res_;
 
 
