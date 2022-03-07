@@ -176,13 +176,13 @@ namespace cola
     std::vector<unsigned> iw_break_set_;
     int active_index_ = 0;
 
-    void 
+    void
     set_iw_sccs(std::vector<std::vector<unsigned>> iw_sccs)
     {
       this->iw_sccs_ = iw_sccs;
     }
 
-    void 
+    void
     set_iw_break_set(std::vector<unsigned> iw_break_set)
     {
       this->iw_break_set_ = iw_break_set;
@@ -216,12 +216,12 @@ namespace cola
         {
           return false;
         }
-        else 
+        else
         {
           return iw_break_set_ < other.iw_break_set_;
         }
       }
-      else 
+      else
       {
         return iw_sccs_ < other.iw_sccs_;
       }
@@ -230,7 +230,7 @@ namespace cola
     {
       return active_index_ < other.active_index_;
     }
-    
+
     // if (weak_set_ == other.weak_set_)
     // {
     //   if (break_set_ == other.break_set_)
@@ -286,7 +286,7 @@ namespace cola
     if (this->iw_break_set_ != other.iw_break_set_)
       return false;
     return true;
-    
+
     // if (this->weak_set_ != other.weak_set_)
     // {
     //   return false;
@@ -717,7 +717,7 @@ namespace cola
       if (!has_color)
       {
         // add non color successor
-        next_slices_.emplace_back(next_slice_); 
+        next_slices_.emplace_back(next_slice_);
         std::vector<slice_mark> marks;
         for (unsigned i = 0; i < next_slice_.size(); i++)
         {
@@ -731,7 +731,7 @@ namespace cola
       {
         return;
       }
-      
+
       //2. every state compute marks
       {
         std::vector<std::set<unsigned>> next_ranks;
@@ -819,16 +819,16 @@ namespace cola
 
   /***********************************************************************/
   // Miyano-Hayashi complementation for IW components
-  class mh_complement 
+  class mh_complement
   {
   private:
     // source automaton
     const spot::const_twa_graph_ptr aut_;
     spot::scc_info scc_info_;
-    std::vector<bool> is_accepting_;
+    std::string scc_types_;
 
   public:
-    mh_complement(const spot::const_twa_graph_ptr& aut, spot::scc_info& scc_info, std::vector<bool> is_accepting) : aut_(aut), scc_info_(scc_info), is_accepting_(is_accepting){}
+    mh_complement(const spot::const_twa_graph_ptr& aut, spot::scc_info& scc_info, std::string scc_types) : aut_(aut), scc_info_(scc_info), scc_types_(scc_types){}
 
     std::vector<std::pair<std::set<unsigned>, unsigned>> get_succ_track(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index);
     std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index);
@@ -837,42 +837,48 @@ namespace cola
     std::set<unsigned> get_all_successors(std::set<unsigned> current_states, bdd symbol);
   };
 
-  std::vector<std::pair<std::set<unsigned>, unsigned>> 
+  std::vector<std::pair<std::set<unsigned>, unsigned>>
   mh_complement::get_succ_track(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index)
   {
     std::vector<std::pair<std::set<unsigned>, unsigned>> succ;
 
     std::set<unsigned> all_succ = this->get_all_successors(reachable, symbol);
-    std::set<unsigned> succ_in_scc;
-    std::set_intersection(all_succ.begin(), all_succ.end(), scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
+    std::vector<unsigned> succ_in_scc;
+    std::set<unsigned> scc_states(scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end());
+    std::set_intersection(all_succ.begin(), all_succ.end(), scc_states.begin(), scc_states.end(), std::back_inserter(succ_in_scc));
 
-    succ.push_back({succ_in_scc, 0});
+    succ.push_back({std::set<unsigned>(succ_in_scc.begin(), succ_in_scc.end()), 0});
 
     return succ;
   }
 
-  std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> 
+  std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>
   mh_complement::get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index)
   {
     std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> succ;
 
     std::set<unsigned> all_succ = this->get_all_successors(reachable, symbol);
-    std::set<unsigned> succ_in_scc;
-    std::set_intersection(all_succ.begin(), all_succ.end(), scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
+    std::vector<unsigned> succ_in_scc;
+    std::set<unsigned> scc_states(scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end());
+    std::set_intersection(all_succ.begin(), all_succ.end(), scc_states.begin(), scc_states.end(), std::back_inserter(succ_in_scc));
 
     std::set<unsigned> new_break_set;
-    for (auto s : succ_in_scc)
+    // for (auto s : succ_in_scc)
+    // {
+    //   if (is_accepting_[s])
+    //     new_break_set.insert(s);
+    // }
+    if (is_accepting_weakscc(scc_types_, scc_index))
     {
-      if (is_accepting_[s])
-        new_break_set.insert(s);
+      new_break_set.insert(succ_in_scc.begin(), succ_in_scc.end());
     }
 
-    succ.push_back({{succ_in_scc, new_break_set}, 0});
+    succ.push_back({{std::set<unsigned>(succ_in_scc.begin(), succ_in_scc.end()), new_break_set}, 0});
 
     return succ;
   }
 
-  std::pair<std::vector<std::pair<std::set<unsigned>, unsigned>>, std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>> 
+  std::pair<std::vector<std::pair<std::set<unsigned>, unsigned>>, std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>>
   mh_complement::get_succ_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, unsigned scc_index, std::vector<unsigned> break_set)
   {
     std::vector<std::pair<std::set<unsigned>, unsigned>> succ_tt;
@@ -887,36 +893,41 @@ namespace cola
         succ.second = 1;
       }
     }
-    else 
+    else
     {
       // return AT and stay in the same scc
       std::set<unsigned> all_succ = this->get_all_successors(reachable, symbol);
       std::set<unsigned> succ_in_scc;
-      std::set_intersection(all_succ.begin(), all_succ.end(), scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
+      std::set<unsigned> scc_states(scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end());
+      std::set_intersection(all_succ.begin(), all_succ.end(), scc_states.begin(), scc_states.end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
 
       std::set<unsigned> break_set_succ = this->get_all_successors(std::set<unsigned>(break_set.begin(), break_set.end()), symbol);
-      std::set<unsigned> reach_not_in_scc;
-      std::set_difference(reachable.begin(), reachable.end(), reach_in_scc.begin(), reach_in_scc.end(), std::inserter(reach_not_in_scc, reach_not_in_scc.begin()));
-      std::set<unsigned> not_scc_succ = this->get_all_successors(reach_not_in_scc, symbol);
-      std::set<unsigned> not_scc_succ_curr;
-      std::set_intersection(not_scc_succ.begin(), not_scc_succ.end(), scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end(), std::inserter(not_scc_succ_curr, not_scc_succ_curr.begin()));
-      break_set_succ.insert(not_scc_succ_curr.begin(), not_scc_succ_curr.end());
+      // std::set<unsigned> reach_not_in_scc;
+      // std::set_difference(reachable.begin(), reachable.end(), reach_in_scc.begin(), reach_in_scc.end(), std::inserter(reach_not_in_scc, reach_not_in_scc.begin()));
+      // std::set<unsigned> not_scc_succ = this->get_all_successors(reach_not_in_scc, symbol);
+      // std::set<unsigned> not_scc_succ_curr;
+      // std::set_intersection(not_scc_succ.begin(), not_scc_succ.end(), scc_states.begin(), scc_states.end(), std::inserter(not_scc_succ_curr, not_scc_succ_curr.begin()));
+      // break_set_succ.insert(not_scc_succ_curr.begin(), not_scc_succ_curr.end());
       std::set<unsigned> inter;
       std::set_intersection(break_set_succ.begin(), break_set_succ.end(), succ_in_scc.begin(), succ_in_scc.end(), std::inserter(inter, inter.begin()));
 
       std::set<unsigned> new_break_set;
-      for (auto s : inter)
+      // for (auto s : inter)
+      // {
+      //   if (is_accepting_[s])
+      //     new_break_set.insert(s);
+      // }
+      if (is_accepting_weakscc(scc_types_, scc_index))
       {
-        if (is_accepting_[s])
-          new_break_set.insert(s);
+        new_break_set.insert(inter.begin(), inter.end());
       }
-      succ_at.push_back({{succ_in_scc, new_break_set}, 0});
+      succ_at.push_back({{std::set<unsigned>(succ_in_scc.begin(), succ_in_scc.end()), new_break_set}, 0});
     }
 
     return {succ_tt, succ_at};
   }
 
-  std::set<unsigned> 
+  std::set<unsigned>
   mh_complement::get_all_successors(std::set<unsigned> current_states, bdd symbol)
   {
     std::set<unsigned> successors;
@@ -1037,7 +1048,7 @@ namespace cola
         name += get_set_string(tmp);
       }
       name += ",";
-      const std::set<unsigned> breakset(ms.break_set_.begin(), ms.break_set_.end());
+      const std::set<unsigned> breakset(ms.iw_break_set_.begin(), ms.iw_break_set_.end());
       name += get_set_string(breakset);
       name += ",";
       name += std::to_string(ms.active_index_);
@@ -1715,6 +1726,7 @@ namespace cola
           delayed_simulator_(aut, om),
           show_names_(om.get(VERBOSE_LEVEL) >= 1)
     {
+
       if (om.get(VERBOSE_LEVEL) >= 2)
       {
         simulator_.output_simulation();
@@ -1813,8 +1825,8 @@ namespace cola
       // res_->set_init_state(new_state(new_init_state));
     }
 
-    unsigned 
-    get_num_states() 
+    unsigned
+    get_num_states()
     {
       return this->nb_states_;
     }
@@ -1831,7 +1843,7 @@ namespace cola
       /*********************************************/
       // complementation algorithm
       auto acc = res_->set_buchi();
-      
+
       // test: scc iteration
       unsigned scc_count = get_scc_info().scc_count();
       auto scc_types = get_scc_types(get_scc_info());
@@ -1847,20 +1859,21 @@ namespace cola
       std::cerr << "Orig initial: " << orig_init << std::endl;
       unsigned active_index = scc_info.scc_of(orig_init);
       init_state.set_active_index(active_index);
-      
+
       std::vector<std::vector<unsigned>> iw_sccs;
       for (unsigned index : weaksccs_)
       {
         if (index != active_index)
           iw_sccs.push_back(std::vector<unsigned>());
-        else 
+        else
           iw_sccs.push_back(std::vector<unsigned>(1, orig_init));
       }
       init_state.set_iw_sccs(iw_sccs);
-      
+
       // get break set for active scc
-      if (is_accepting_[orig_init])
+      if (is_accepting_weakscc(scc_types_, active_index)){ // continue here
         init_state.set_iw_break_set(std::vector<unsigned>(1, orig_init));
+      }
       else
         init_state.set_iw_break_set(std::vector<unsigned>());
       std::cerr << "Initial: " << get_name(init_state) << std::endl;
@@ -1869,7 +1882,7 @@ namespace cola
       std::vector<complement_mstate> all_states;
       all_states.push_back(init_state);
 
-      mh_complement mh(aut_, scc_info, is_accepting_);
+      mh_complement mh(aut_, scc_info, scc_types_);
       bool sink_state = false;
 
       while (!todo_.empty())
@@ -1950,7 +1963,7 @@ namespace cola
               }
 
               // test: getSuccTrackToActive
-              else 
+              else
               {
                 auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
                 std::cerr << "GetSuccTrackToActive: ";
@@ -1963,8 +1976,8 @@ namespace cola
                 std::cerr << std::endl;
               }
             }
-  
-            else 
+
+            else
             {
               // test: getSuccActive
               auto succ_active = mh.get_succ_active(reachable, reach_track, letter, index, ms.iw_break_set_);
@@ -2010,13 +2023,13 @@ namespace cola
 
       }
 
-      spot::print_hoa(std::cout, res_);
+      spot::print_hoa(std::cerr, res_);
       return res_;
-      
+
 
       throw std::runtime_error("complement_tnba() not ready"); //!
       /*********************************************/
-      
+
       // Main stuff happens here
       // todo_ is a queue for handling states
       unsigned sink = INT_MAX;
