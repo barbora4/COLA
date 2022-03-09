@@ -107,10 +107,6 @@ namespace cola
       this->set_acc_detsccs(other.acc_detsccs_);
     }
 
-    /******/
-    complement_mstate(spot::scc_info &si) : si_(si) {}
-    /******/
-
     std::set<unsigned>
     get_reach_set() const;
 
@@ -173,7 +169,6 @@ namespace cola
     std::set<unsigned> weak_set_;
     std::set<unsigned> break_set_;
 
-    /*******/
     std::vector<std::vector<unsigned>> iw_sccs_;
     std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_detsccs_;
     std::vector<unsigned> iw_break_set_;
@@ -202,7 +197,6 @@ namespace cola
     {
       this->active_index_ = index;
     }
-    /*******/
   };
 
   struct complement_mstate_hash
@@ -357,6 +351,11 @@ namespace cola
     for (auto &p : iw_sccs_)
     {
       result.insert(p.begin(), p.end());
+    }
+    for (auto &p : acc_detsccs_)
+    {
+      result.insert(p.first.begin(), p.first.end());
+      result.insert(p.second.begin(), p.second.end());
     }
     return result;
   }
@@ -1113,12 +1112,6 @@ namespace cola
     unsigned
     new_state(complement_mstate &s)
     {
-      // complement_mstate dup(s);
-      // auto ns = rank2n_.emplace(dup, 0);
-      // auto p = res_->new_state();
-      // todo_.emplace_back(dup, p);
-      // return p;
-
       complement_mstate dup(s);
       auto p = rank2n_.emplace(dup, 0);
       if (p.second) // This is a new state
@@ -1502,6 +1495,12 @@ namespace cola
       }
     }
 
+    std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>>
+    get_succ_track(std::set<unsigned> reachable, std::pair<std::vector<unsigned>, std::vector<unsigned>> reach_in_scc, bdd symbol, unsigned scc_index)
+    {
+      std::cerr << "Get succ track for det scc" << std::endl;
+    }
+
     // compute the successor P={nondeterministic states and nonaccepting SCCs} O = {breakpoint for weak SCCs}
     // and labelling states for each SCC
     void
@@ -1868,25 +1867,24 @@ namespace cola
     spot::twa_graph_ptr
     run()
     {
-      /*********************************************/
       // complementation algorithm
       auto acc = res_->set_buchi();
 
-      // test: scc iteration
-      unsigned scc_count = get_scc_info().scc_count();
-      auto scc_types = get_scc_types(get_scc_info());
-      for (unsigned i=0; i<scc_count; i++){
-        if (is_accepting_detscc(scc_types, i))
-          std::cerr << "Det SCC" << std::endl;
-        else if (is_weakscc(scc_types, i))
-          std::cerr << "Weak SCC" << std::endl;
-      }
+      // // test: scc iteration
+      // unsigned scc_count = get_scc_info().scc_count();
+      // auto scc_types = get_scc_types(get_scc_info());
+      // for (unsigned i=0; i<scc_count; i++){
+      //   if (is_accepting_detscc(scc_types, i))
+      //     std::cerr << "Det SCC" << std::endl;
+      //   else if (is_weakscc(scc_types, i))
+      //     std::cerr << "Weak SCC" << std::endl;
+      // }
 
       // initial macrostate
       auto scc_info = get_scc_info();
-      complement_mstate init_state(scc_info);
+      complement_mstate init_state(scc_info, acc_detsccs_.size());
       unsigned orig_init = aut_->get_init_state_number();
-      std::cerr << "Orig initial: " << orig_init << std::endl;
+      // std::cerr << "Orig initial: " << orig_init << std::endl;
       unsigned active_index = scc_info.scc_of(orig_init);
       init_state.set_active_index(active_index);
 
@@ -1911,8 +1909,7 @@ namespace cola
 
 
       // get break set for active scc
-      // continue here
-      if (is_accepting_weakscc(scc_types_, active_index) or is_accepting_detscc(scc_types_, active_index))
+      if (is_weakscc(scc_types_, active_index) or is_accepting_detscc(scc_types_, active_index))
       { 
         init_state.set_iw_break_set(std::vector<unsigned>(1, orig_init));
       }
@@ -1920,7 +1917,8 @@ namespace cola
       {
         init_state.set_iw_break_set(std::vector<unsigned>());
       }
-      std::cerr << "Initial: " << get_name(init_state) << std::endl;
+
+      // std::cerr << "Initial: " << get_name(init_state) << std::endl;
       auto init = new_state(init_state);
 
       std::vector<complement_mstate> all_states;
@@ -1934,7 +1932,7 @@ namespace cola
         auto top = todo_.front();
         todo_.pop_front();
         complement_mstate ms = top.first;
-        std::cerr << "State: " << get_name(ms) << std::endl;
+        // std::cerr << "State: " << get_name(ms) << std::endl;
         active_index = ms.active_index_;
 
         // reachable states
@@ -1963,7 +1961,7 @@ namespace cola
         if (all != bddtrue)
         {
           // direct the rest to sink state
-          complement_mstate succ(si_);
+          complement_mstate succ(si_, acc_detsccs_.size());
           succ.active_index_ = -1;
           auto sink = new_state(succ);
           // empty state use 0 as well as the weak ones
@@ -1979,10 +1977,10 @@ namespace cola
         {
           bdd letter = bdd_satoneset(all, msupport, bddfalse);
           all -= letter;
-          std::cerr << "Current symbol: " << letter << std::endl;
+          // std::cerr << "Current symbol: " << letter << std::endl;
 
           bool active_type = true;
-          complement_mstate new_succ(scc_info);
+          complement_mstate new_succ(scc_info, acc_detsccs_.size());
           std::vector<std::vector<unsigned>> iw_succ(ms.iw_sccs_.size());
           std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_det_succ(ms.acc_detsccs_.size());
 
@@ -1994,7 +1992,6 @@ namespace cola
           unsigned true_index = std::distance(indices.begin(), it);
           unsigned orig_index = true_index;
 
-          // continue here
           for (unsigned i=0; i<indices.size(); i++)
           {
             true_index = (orig_index+i)%indices.size();
@@ -2007,56 +2004,76 @@ namespace cola
             if (active_index != index)
             {
               // non-active scc
-
-              // test: getSuccTrack
-              if (active_type or (index != (indices[(orig_index + 1)%indices.size()])))
+              if (is_weakscc(scc_types_, index))
               {
-                auto succ_track = mh.get_succ_track(reachable, reach_track, letter, index);
-                std::cerr << "GetSuccTrack: ";
-                for (auto succ : succ_track)
+                // test: getSuccTrack
+                if (active_type or (index != (indices[(orig_index + 1)%indices.size()])))
                 {
-                  std::cerr << get_set_string(succ.first) << "+" << succ.second << " ";
-                  iw_succ[true_index] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
+                  auto succ_track = mh.get_succ_track(reachable, reach_track, letter, index);
+                  // std::cerr << "GetSuccTrack: ";
+                  for (auto succ : succ_track)
+                  {
+                    // std::cerr << get_set_string(succ.first) << "+" << succ.second << " ";
+                    iw_succ[true_index] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
+                  }
+                  // std::cerr << std::endl;
                 }
-                std::cerr << std::endl;
+
+                // test: getSuccTrackToActive
+                else
+                {
+                  auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
+                  // std::cerr << "GetSuccTrackToActive: ";
+                  for (auto succ : succ_track_to_active)
+                  {
+                    // std::cerr << get_set_string(succ.first.first) << "+" << get_set_string(succ.first.second) << "+" << succ.second << " ";
+                    iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+                    new_succ.set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+                  }
+                  std::cerr << std::endl;
+                }
               }
-
-              // test: getSuccTrackToActive
-              else
+              else if (is_accepting_detscc(scc_types_, index))
               {
-                auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
-                std::cerr << "GetSuccTrackToActive: ";
-                for (auto succ : succ_track_to_active)
+                if (active_type or (index != (indices[(orig_index + 1)%indices.size()])))
                 {
-                  std::cerr << get_set_string(succ.first.first) << "+" << get_set_string(succ.first.second) << "+" << succ.second << " ";
-                  iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
-                  new_succ.set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+                  ;
+                  // test
                 }
-                std::cerr << std::endl;
               }
             }
 
             else
             {
-              // test: getSuccActive
-              auto succ_active = mh.get_succ_active(reachable, reach_track, letter, index, ms.iw_break_set_);
-              std::cerr << "GetSuccActive: TT: ";
-              for (auto succ_tt : succ_active.first)
+              if (is_weakscc(scc_types_, index))
               {
-                std::cerr << get_set_string(succ_tt.first) << "+" << succ_tt.second << " ";
-                iw_succ[true_index] = std::vector<unsigned>(succ_tt.first.begin(), succ_tt.first.end());
-              }
-              std::cerr << ", AT: ";
-              for (auto succ_at : succ_active.second)
-              {
-                std::cerr << get_set_string(succ_at.first.first) << "+" << get_set_string(succ_at.first.second) << "+" << succ_at.second << " ";
-                iw_succ[true_index] = std::vector<unsigned>(succ_at.first.first.begin(), succ_at.first.first.end());
-                new_succ.set_iw_break_set(std::vector<unsigned>(succ_at.first.second.begin(), succ_at.first.second.end()));
-              }
-              std::cerr << std::endl;
+                // test: getSuccActive
+                auto succ_active = mh.get_succ_active(reachable, reach_track, letter, index, ms.iw_break_set_);
+                // std::cerr << "GetSuccActive: TT: ";
+                for (auto succ_tt : succ_active.first)
+                {
+                  // std::cerr << get_set_string(succ_tt.first) << "+" << succ_tt.second << " ";
+                  iw_succ[true_index] = std::vector<unsigned>(succ_tt.first.begin(), succ_tt.first.end());
+                }
+                // std::cerr << ", AT: ";
+                for (auto succ_at : succ_active.second)
+                {
+                  // std::cerr << get_set_string(succ_at.first.first) << "+" << get_set_string(succ_at.first.second) << "+" << succ_at.second << " ";
+                  iw_succ[true_index] = std::vector<unsigned>(succ_at.first.first.begin(), succ_at.first.first.end());
+                  new_succ.set_iw_break_set(std::vector<unsigned>(succ_at.first.second.begin(), succ_at.first.second.end()));
+                }
+                // std::cerr << std::endl;
 
-              if (succ_active.first.size() > 0)
-                active_type = false;
+                if (succ_active.first.size() > 0)
+                  active_type = false;
+              }
+
+              else if (is_accepting_detscc(scc_types_, index))
+              {
+                // test
+                ;
+              }
+              
             }
           }
 
@@ -2066,8 +2083,9 @@ namespace cola
           else
             new_succ.set_active_index(active_index);
           new_succ.set_iw_sccs(iw_succ);
+          new_succ.set_acc_detsccs(acc_det_succ);
 
-          std::cerr << "New succ: " << get_name(new_succ) << std::endl;
+          // std::cerr << "New succ: " << get_name(new_succ) << std::endl;
           if (std::find(all_states.begin(), all_states.end(), new_succ) == all_states.end())
           {
             all_states.push_back(new_succ);
@@ -2083,98 +2101,97 @@ namespace cola
 
       }
 
-      spot::print_hoa(std::cerr, res_);
-      std::cerr << std::endl;
+      // spot::print_hoa(std::cerr, res_);
+      // std::cerr << std::endl;
       return res_;
 
 
-      throw std::runtime_error("complement_tnba() not ready"); //!
-      /*********************************************/
+    //   throw std::runtime_error("complement_tnba() not ready");
 
-      // Main stuff happens here
-      // todo_ is a queue for handling states
-      unsigned sink = INT_MAX;
+    //   // Main stuff happens here
+    //   // todo_ is a queue for handling states
+    //   unsigned sink = INT_MAX;
 
-      while (!todo_.empty())
-      {
-        auto top = todo_.front();
-        todo_.pop_front();
-        // pop current state, (N, Rnk)
-        complement_mstate ms = top.first;
+    //   while (!todo_.empty())
+    //   {
+    //     auto top = todo_.front();
+    //     todo_.pop_front();
+    //     // pop current state, (N, Rnk)
+    //     complement_mstate ms = top.first;
 
-        // Compute support of all available states.
-        bdd msupport = bddtrue;
-        bdd n_s_compat = bddfalse;
-        const std::set<unsigned> &reach_set = ms.get_reach_set();
-        // compute the occurred variables in the outgoing transitions of ms, stored in msupport
-        for (unsigned s : reach_set)
-        {
-          msupport &= support_[s];
-          n_s_compat |= compat_[s];
-        }
+    //     // Compute support of all available states.
+    //     bdd msupport = bddtrue;
+    //     bdd n_s_compat = bddfalse;
+    //     const std::set<unsigned> &reach_set = ms.get_reach_set();
+    //     // compute the occurred variables in the outgoing transitions of ms, stored in msupport
+    //     for (unsigned s : reach_set)
+    //     {
+    //       msupport &= support_[s];
+    //       n_s_compat |= compat_[s];
+    //     }
 
-        bdd all = n_s_compat;
-        if (all != bddtrue)
-        {
-          // direct the rest to sink state
-          complement_mstate succ(si_, acc_detsccs_.size());
-          sink = new_state(succ);
-          // empty state use 0 as well as the weak ones
-          res_->new_edge(top.second, sink, !all);
-        }
-        while (all != bddfalse)
-        {
-          bdd letter = bdd_satoneset(all, msupport, bddfalse);
-          all -= letter;
-          // std::cout << "Current state = " << get_name(ms) << " letter = "<< letter << std::endl;
-          // the number of SCCs we care is the accepting det SCCs and the weak SCCs
-          compute_successors(ms, top.second, letter);
-        }
-      }
-      // amend the edges
-      if (sink < res_->num_states())
-      {
-        for (auto &t : res_->out(sink))
-        {
-          if (t.dst == sink)
-          {
-            for (unsigned c = 0; c <= sets_; c++)
-            {
-              t.acc.set(c);
-            }
-          }
-        }
-      }
+    //     bdd all = n_s_compat;
+    //     if (all != bddtrue)
+    //     {
+    //       // direct the rest to sink state
+    //       complement_mstate succ(si_, acc_detsccs_.size());
+    //       sink = new_state(succ);
+    //       // empty state use 0 as well as the weak ones
+    //       res_->new_edge(top.second, sink, !all);
+    //     }
+    //     while (all != bddfalse)
+    //     {
+    //       bdd letter = bdd_satoneset(all, msupport, bddfalse);
+    //       all -= letter;
+    //       // std::cout << "Current state = " << get_name(ms) << " letter = "<< letter << std::endl;
+    //       // the number of SCCs we care is the accepting det SCCs and the weak SCCs
+    //       compute_successors(ms, top.second, letter);
+    //     }
+    //   }
+    //   // amend the edges
+    //   if (sink < res_->num_states())
+    //   {
+    //     for (auto &t : res_->out(sink))
+    //     {
+    //       if (t.dst == sink)
+    //       {
+    //         for (unsigned c = 0; c <= sets_; c++)
+    //         {
+    //           t.acc.set(c);
+    //         }
+    //       }
+    //     }
+    //   }
 
-      // set up the acceptance
-      res_->set_generalized_buchi(sets_ + 1);
-      if (aut_->prop_complete().is_true())
-        res_->prop_complete(true);
-      // res_->prop_universal(true);
-      res_->prop_state_acc(false);
-      if (om_.get(VERBOSE_LEVEL) >= 1)
-      {
-        output_file(res_, "nba.hoa");
-        std::cout << "Before simplification #States: " << res_->num_states() << " #Colors: " << res_->num_sets() << std::endl;
-        if (om_.get(VERBOSE_LEVEL) >= 2)
-        {
-          spot::twa_graph_ptr dual = spot::complement(aut_);
-          check_equivalence(dual, res_);
-        }
-      }
-      // if (om_.get(USE_SCC_INFO) > 0)
-      //   res_ = postprocess(res_);
-      // if (om_.get(VERBOSE_LEVEL) >= 1)
-      // {
-      //   std::cout << "After simplification #States: " << res_->num_states() << " #Colors: " << res_->num_sets() << std::endl;
-      //   output_file(res_, "dpa1.hoa");
-      //   if (om_.get(VERBOSE_LEVEL) >= 2)
-      //     check_equivalence(aut_, res_);
-      // }
-      simplify_acceptance_here(res_);
+    //   // set up the acceptance
+    //   res_->set_generalized_buchi(sets_ + 1);
+    //   if (aut_->prop_complete().is_true())
+    //     res_->prop_complete(true);
+    //   // res_->prop_universal(true);
+    //   res_->prop_state_acc(false);
+    //   if (om_.get(VERBOSE_LEVEL) >= 1)
+    //   {
+    //     output_file(res_, "nba.hoa");
+    //     std::cout << "Before simplification #States: " << res_->num_states() << " #Colors: " << res_->num_sets() << std::endl;
+    //     if (om_.get(VERBOSE_LEVEL) >= 2)
+    //     {
+    //       spot::twa_graph_ptr dual = spot::complement(aut_);
+    //       check_equivalence(dual, res_);
+    //     }
+    //   }
+    //   // if (om_.get(USE_SCC_INFO) > 0)
+    //   //   res_ = postprocess(res_);
+    //   // if (om_.get(VERBOSE_LEVEL) >= 1)
+    //   // {
+    //   //   std::cout << "After simplification #States: " << res_->num_states() << " #Colors: " << res_->num_sets() << std::endl;
+    //   //   output_file(res_, "dpa1.hoa");
+    //   //   if (om_.get(VERBOSE_LEVEL) >= 2)
+    //   //     check_equivalence(aut_, res_);
+    //   // }
+    //   simplify_acceptance_here(res_);
 
-      return res_;
-    }
+    //   return res_;
+    // }
   };
 
   spot::twa_graph_ptr
@@ -2199,9 +2216,7 @@ namespace cola
       aut_reduced = aut;
     spot::scc_info scc(aut_reduced, spot::scc_info_options::ALL);
 
-    /*******************************************************************/
     auto comp = cola::tnba_complement(aut_reduced, scc, om, implications);
     return comp.run();
-    /*******************************************************************/
   }
 }
