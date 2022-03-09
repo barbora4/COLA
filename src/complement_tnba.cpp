@@ -956,14 +956,14 @@ namespace cola
         if (!bdd_implies(symbol, t.cond))
           continue;
 
-        std::cerr << "Successor: " << t.dst << std::endl;
+        // std::cerr << "Successor: " << t.dst << std::endl;
         successors.insert(t.dst);
       }
     }
 
     return successors;
   }
-  /***********************************************************************/
+
 
   // complementation Buchi automata
   class tnba_complement
@@ -1499,6 +1499,7 @@ namespace cola
     get_succ_track(std::set<unsigned> reachable, std::pair<std::vector<unsigned>, std::vector<unsigned>> reach_in_scc, bdd symbol, unsigned scc_index)
     {
       std::cerr << "Get succ track for det scc" << std::endl;
+      // continue here
     }
 
     // compute the successor P={nondeterministic states and nonaccepting SCCs} O = {breakpoint for weak SCCs}
@@ -2030,7 +2031,7 @@ namespace cola
                     iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
                     new_succ.set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
                   }
-                  std::cerr << std::endl;
+                  // std::cerr << std::endl;
                 }
               }
               else if (is_accepting_detscc(scc_types_, index))
@@ -2106,92 +2107,92 @@ namespace cola
       return res_;
 
 
-    //   throw std::runtime_error("complement_tnba() not ready");
+      // throw std::runtime_error("complement_tnba() not ready");
 
-    //   // Main stuff happens here
-    //   // todo_ is a queue for handling states
-    //   unsigned sink = INT_MAX;
+      // // Main stuff happens here
+      // // todo_ is a queue for handling states
+      // unsigned sink = INT_MAX;
 
-    //   while (!todo_.empty())
-    //   {
-    //     auto top = todo_.front();
-    //     todo_.pop_front();
-    //     // pop current state, (N, Rnk)
-    //     complement_mstate ms = top.first;
+      // while (!todo_.empty())
+      // {
+      //   auto top = todo_.front();
+      //   todo_.pop_front();
+      //   // pop current state, (N, Rnk)
+      //   complement_mstate ms = top.first;
 
-    //     // Compute support of all available states.
-    //     bdd msupport = bddtrue;
-    //     bdd n_s_compat = bddfalse;
-    //     const std::set<unsigned> &reach_set = ms.get_reach_set();
-    //     // compute the occurred variables in the outgoing transitions of ms, stored in msupport
-    //     for (unsigned s : reach_set)
-    //     {
-    //       msupport &= support_[s];
-    //       n_s_compat |= compat_[s];
-    //     }
+      //   // Compute support of all available states.
+      //   bdd msupport = bddtrue;
+      //   bdd n_s_compat = bddfalse;
+      //   const std::set<unsigned> &reach_set = ms.get_reach_set();
+      //   // compute the occurred variables in the outgoing transitions of ms, stored in msupport
+      //   for (unsigned s : reach_set)
+      //   {
+      //     msupport &= support_[s];
+      //     n_s_compat |= compat_[s];
+      //   }
 
-    //     bdd all = n_s_compat;
-    //     if (all != bddtrue)
-    //     {
-    //       // direct the rest to sink state
-    //       complement_mstate succ(si_, acc_detsccs_.size());
-    //       sink = new_state(succ);
-    //       // empty state use 0 as well as the weak ones
-    //       res_->new_edge(top.second, sink, !all);
-    //     }
-    //     while (all != bddfalse)
-    //     {
-    //       bdd letter = bdd_satoneset(all, msupport, bddfalse);
-    //       all -= letter;
-    //       // std::cout << "Current state = " << get_name(ms) << " letter = "<< letter << std::endl;
-    //       // the number of SCCs we care is the accepting det SCCs and the weak SCCs
-    //       compute_successors(ms, top.second, letter);
-    //     }
-    //   }
-    //   // amend the edges
-    //   if (sink < res_->num_states())
-    //   {
-    //     for (auto &t : res_->out(sink))
-    //     {
-    //       if (t.dst == sink)
-    //       {
-    //         for (unsigned c = 0; c <= sets_; c++)
-    //         {
-    //           t.acc.set(c);
-    //         }
-    //       }
-    //     }
-    //   }
+      //   bdd all = n_s_compat;
+      //   if (all != bddtrue)
+      //   {
+      //     // direct the rest to sink state
+      //     complement_mstate succ(si_, acc_detsccs_.size());
+      //     sink = new_state(succ);
+      //     // empty state use 0 as well as the weak ones
+      //     res_->new_edge(top.second, sink, !all);
+      //   }
+      //   while (all != bddfalse)
+      //   {
+      //     bdd letter = bdd_satoneset(all, msupport, bddfalse);
+      //     all -= letter;
+      //     // std::cout << "Current state = " << get_name(ms) << " letter = "<< letter << std::endl;
+      //     // the number of SCCs we care is the accepting det SCCs and the weak SCCs
+      //     compute_successors(ms, top.second, letter);
+      //   }
+      // }
+      // // amend the edges
+      // if (sink < res_->num_states())
+      // {
+      //   for (auto &t : res_->out(sink))
+      //   {
+      //     if (t.dst == sink)
+      //     {
+      //       for (unsigned c = 0; c <= sets_; c++)
+      //       {
+      //         t.acc.set(c);
+      //       }
+      //     }
+      //   }
+      // }
 
-    //   // set up the acceptance
-    //   res_->set_generalized_buchi(sets_ + 1);
-    //   if (aut_->prop_complete().is_true())
-    //     res_->prop_complete(true);
-    //   // res_->prop_universal(true);
-    //   res_->prop_state_acc(false);
-    //   if (om_.get(VERBOSE_LEVEL) >= 1)
-    //   {
-    //     output_file(res_, "nba.hoa");
-    //     std::cout << "Before simplification #States: " << res_->num_states() << " #Colors: " << res_->num_sets() << std::endl;
-    //     if (om_.get(VERBOSE_LEVEL) >= 2)
-    //     {
-    //       spot::twa_graph_ptr dual = spot::complement(aut_);
-    //       check_equivalence(dual, res_);
-    //     }
-    //   }
-    //   // if (om_.get(USE_SCC_INFO) > 0)
-    //   //   res_ = postprocess(res_);
-    //   // if (om_.get(VERBOSE_LEVEL) >= 1)
-    //   // {
-    //   //   std::cout << "After simplification #States: " << res_->num_states() << " #Colors: " << res_->num_sets() << std::endl;
-    //   //   output_file(res_, "dpa1.hoa");
-    //   //   if (om_.get(VERBOSE_LEVEL) >= 2)
-    //   //     check_equivalence(aut_, res_);
-    //   // }
-    //   simplify_acceptance_here(res_);
+      // // set up the acceptance
+      // res_->set_generalized_buchi(sets_ + 1);
+      // if (aut_->prop_complete().is_true())
+      //   res_->prop_complete(true);
+      // // res_->prop_universal(true);
+      // res_->prop_state_acc(false);
+      // if (om_.get(VERBOSE_LEVEL) >= 1)
+      // {
+      //   output_file(res_, "nba.hoa");
+      //   std::cout << "Before simplification #States: " << res_->num_states() << " #Colors: " << res_->num_sets() << std::endl;
+      //   if (om_.get(VERBOSE_LEVEL) >= 2)
+      //   {
+      //     spot::twa_graph_ptr dual = spot::complement(aut_);
+      //     check_equivalence(dual, res_);
+      //   }
+      // }
+      // // if (om_.get(USE_SCC_INFO) > 0)
+      // //   res_ = postprocess(res_);
+      // // if (om_.get(VERBOSE_LEVEL) >= 1)
+      // // {
+      // //   std::cout << "After simplification #States: " << res_->num_states() << " #Colors: " << res_->num_sets() << std::endl;
+      // //   output_file(res_, "dpa1.hoa");
+      // //   if (om_.get(VERBOSE_LEVEL) >= 2)
+      // //     check_equivalence(aut_, res_);
+      // // }
+      // simplify_acceptance_here(res_);
 
-    //   return res_;
-    // }
+      // return res_;
+    }
   };
 
   spot::twa_graph_ptr
