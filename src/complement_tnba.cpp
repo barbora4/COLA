@@ -1320,6 +1320,7 @@ namespace cola
         }
       }
 
+
       //4. Handle B-states
       bool is_pre_b_empty = true;
       bool is_b_empty = true;
@@ -1766,7 +1767,9 @@ namespace cola
       std::vector<std::map<unsigned, int>> succ_maps;
       std::vector<bool> acc_succs;
       
+      std::cerr << "Begin" << std::endl;
       csb_successors(det_ranks, active_index, next_scc_indices, succ_maps, acc_succs, next_detstates[active_index], det_cache);
+      std::cerr << "End" << std::endl;
       complement_mstate new_succ2(new_succ);
       new_succ2.set_active_index(-1);
       bool first = true;
@@ -2184,7 +2187,11 @@ namespace cola
           complement_mstate new_succ(scc_info, acc_detsccs_.size());
           complement_mstate new_succ2(scc_info, acc_detsccs_.size());
           std::vector<std::vector<unsigned>> iw_succ(ms.iw_sccs_.size());
-          std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_det_succ(ms.acc_detsccs_.size());
+          std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_det_succ;
+          for (unsigned i=0; i<ms.acc_detsccs_.size(); i++)
+          {
+            acc_det_succ.push_back({std::vector<unsigned>(), std::vector<unsigned>()});
+          }
 
           // scc indices
           std::vector<unsigned> indices(this->weaksccs_.begin(), this->weaksccs_.end());
@@ -2253,23 +2260,23 @@ namespace cola
               {
                 if (active_type or (index != (indices[(orig_index + 1)%indices.size()])))
                 {
+                  std::cerr << "Here" << std::endl;
                   // test: getSuccTrack
                   std::vector<state_rank> ranks;
                   //std::cerr << ms.acc_detsccs_[index].first << " -> " << ms.acc_detsccs_[index][0].second << std::endl;
                   for (auto s : ms.acc_detsccs_[index].first)
                   {
-                    ranks.push_back({s, NCSB_C});
+                    ranks.push_back({s, NCSB_C}); 
+                    /*****/
+                    ranks.push_back({s, NCSB_B});
+                    /*****/
                   }
+                  std::cerr << "Here" << std::endl;
                   for (auto s : ms.acc_detsccs_[index].second)
                   {
                     ranks.push_back({s, NCSB_S});
                   }
-                  /*****/ // TODO
-                  for (auto s : ms.acc_detsccs_[index].first)
-                  {
-                    ranks.push_back({s, NCSB_B});
-                  }
-                  /*****/
+                  std::cerr << "Here" << std::endl;
 
                   auto succ = get_succ_track_CSB(reachable, letter, /*ms.detscc_ranks_[get_detscc_index(index)]*/ ranks, index, new_succ, acc_det_succ, true_index - iw_succ.size());
                   if (succ.size() >= 1)
@@ -2352,6 +2359,7 @@ namespace cola
               {
                 std::cerr << "Reach track size: " << reach_track.size() << std::endl;
                 succ_det = get_succ_active_CSB(reachable, letter, ms.detscc_ranks_[get_detscc_index(active_index)], active_index, new_succ, acc_det_succ, true_index - iw_succ.size());
+                std::cerr << "END" << std::endl;
                 // std::cerr << "Ranks size: " << ms.detscc_ranks_[get_detscc_index(active_index)].size() << std::endl;
                 if (succ_det.size() >= 1)
                 {
@@ -2417,18 +2425,21 @@ namespace cola
               new_succ2.set_active_index(active_index);
             new_succ2.set_iw_sccs(iw_succ);
               
-            std::cerr << "New succ 2: " << get_name(new_succ2) << std::endl;
-            if (std::find(all_states.begin(), all_states.end(), new_succ2) == all_states.end())
+            if (not (new_succ == new_succ2))
             {
-              all_states.push_back(new_succ2);
-              auto s = new_state(new_succ2);
+              std::cerr << "New succ 2: " << get_name(new_succ2) << std::endl;
+              if (std::find(all_states.begin(), all_states.end(), new_succ2) == all_states.end())
+              {
+                all_states.push_back(new_succ2);
+                auto s = new_state(new_succ2);
+              }
+
+              auto p = rank2n_.emplace(new_succ2, 0);
+              if (active_type2)
+                res_->new_edge(top.second, p.first->second, letter);
+              else 
+                res_->new_edge(top.second, p.first->second, letter, acc); 
             }
-          
-            auto p = rank2n_.emplace(new_succ2, 0);
-            if (active_type2)
-              res_->new_edge(top.second, p.first->second, letter);
-            else 
-              res_->new_edge(top.second, p.first->second, letter, acc); 
           }
           
         }
