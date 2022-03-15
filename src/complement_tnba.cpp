@@ -2301,6 +2301,7 @@ namespace cola
                   for (auto s : ms.acc_detsccs_[get_detscc_index(index)].first)
                   {
                     ranks.push_back({s, NCSB_C});
+                    ranks.push_back({s, NCSB_B}); //!
                   }
                   for (auto s : ms.acc_detsccs_[get_detscc_index(index)].second)
                   {
