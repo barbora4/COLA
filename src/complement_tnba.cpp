@@ -1768,7 +1768,7 @@ namespace cola
       std::vector<bool> acc_succs;
       
       std::cerr << "Begin" << std::endl;
-      csb_successors(det_ranks, active_index, next_scc_indices, succ_maps, acc_succs, next_detstates[active_index], det_cache);
+      csb_successors(det_ranks, active_index, next_scc_indices, succ_maps, acc_succs, next_detstates[get_detscc_index(active_index)], det_cache);
       std::cerr << "End" << std::endl;
       complement_mstate new_succ2(new_succ);
       new_succ2.set_active_index(-1);
@@ -1859,7 +1859,7 @@ namespace cola
       std::vector<std::map<unsigned, int>> succ_maps;
       std::vector<bool> acc_succs;
       
-      csb_successors(det_ranks, active_index, next_scc_indices, succ_maps, acc_succs, next_detstates[active_index], det_cache);
+      csb_successors(det_ranks, active_index, next_scc_indices, succ_maps, acc_succs, next_detstates[get_detscc_index(active_index)], det_cache);
       complement_mstate new_succ2(new_succ);
       bool first = true;
       for (auto s : succ_maps)
@@ -2264,7 +2264,7 @@ namespace cola
                   // test: getSuccTrack
                   std::vector<state_rank> ranks;
                   //std::cerr << ms.acc_detsccs_[index].first << " -> " << ms.acc_detsccs_[index][0].second << std::endl;
-                  for (auto s : ms.acc_detsccs_[index].first)
+                  for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].first)
                   {
                     ranks.push_back({s, NCSB_C}); 
                     /*****/
@@ -2272,7 +2272,7 @@ namespace cola
                     /*****/
                   }
                   std::cerr << "Here" << std::endl;
-                  for (auto s : ms.acc_detsccs_[index].second)
+                  for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].second)
                   {
                     ranks.push_back({s, NCSB_S});
                   }
@@ -2298,11 +2298,11 @@ namespace cola
                   // test: getSuccTrackToActive
                   std::vector<state_rank> ranks;
                   //std::cerr << ms.acc_detsccs_[index].first << " -> " << ms.acc_detsccs_[index][0].second << std::endl;
-                  for (auto s : ms.acc_detsccs_[index].first)
+                  for (auto s : ms.acc_detsccs_[get_detscc_index(index)].first)
                   {
                     ranks.push_back({s, NCSB_C});
                   }
-                  for (auto s : ms.acc_detsccs_[index].second)
+                  for (auto s : ms.acc_detsccs_[get_detscc_index(index)].second)
                   {
                     ranks.push_back({s, NCSB_S});
                   }
