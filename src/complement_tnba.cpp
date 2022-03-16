@@ -391,30 +391,56 @@ namespace cola
   complement_mstate::hash() const
   {
     size_t res = 0;
-    for (unsigned i : weak_set_)
+    // for (unsigned i : weak_set_)
+    // {
+    //   res = (res << 3) ^ i;
+    // }
+    // for (unsigned i : break_set_)
+    // {
+    //   res ^= (res << 3) ^ i;
+    // }
+    // for (auto &vec : detscc_ranks_)
+    // {
+    //   for (auto &p : vec)
+    //   {
+    //     res ^= (res << 3) ^ (p.first);
+    //     res ^= (res << 3) ^ (p.second);
+    //   }
+    // }
+    // for (unsigned i = 0; i < nondetscc_ranks_.size(); i++)
+    // {
+    //   for (auto &q : nondetscc_ranks_[i])
+    //   {
+    //     res ^= (res << 3) ^ q;
+    //   }
+    //   res ^= (res << 3) ^ (nondetscc_marks_[i]);
+    // }
+
+    /*****/
+    res = (res << 3) ^ active_index_;
+    for (auto v : iw_sccs_)
     {
-      res = (res << 3) ^ i;
-    }
-    for (unsigned i : break_set_)
-    {
-      res ^= (res << 3) ^ i;
-    }
-    for (auto &vec : detscc_ranks_)
-    {
-      for (auto &p : vec)
+      for (auto s : v)
       {
-        res ^= (res << 3) ^ (p.first);
-        res ^= (res << 3) ^ (p.second);
+        res ^= (res << 3) ^ s;
       }
     }
-    for (unsigned i = 0; i < nondetscc_ranks_.size(); i++)
+    for (auto s : iw_break_set_)
     {
-      for (auto &q : nondetscc_ranks_[i])
-      {
-        res ^= (res << 3) ^ q;
-      }
-      res ^= (res << 3) ^ (nondetscc_marks_[i]);
+      res ^= (res << 3) ^ s;
     }
+    for (auto pr : acc_detsccs_)
+    {
+      for (auto v : pr.first)
+      {
+        res ^= (res << 3) ^ v;
+      }
+      for (auto v : pr.second)
+      {
+        res ^= (res << 3) ^ v;
+      }
+    }
+    /*****/
 
     return res;
   }
@@ -1448,6 +1474,23 @@ namespace cola
           }
         }
       }
+      /*****/
+      if (!is_b_empty)
+      {
+        for (auto mp : det_cache)
+        {
+          for (auto dst : mp.second)
+          {
+            if (dst.first and succ_nodes[dst.second] == NCSB_B)
+            {
+              is_b_empty = true;
+              std::cerr << "NOT EMPTY --------------------------" << std::endl;
+              break;
+            }
+          }
+        }
+      }
+      /*****/
       if (!is_b_empty)
       {
         std::map<unsigned, int> tmp2(succ_nodes);
@@ -1767,21 +1810,19 @@ namespace cola
       std::vector<std::map<unsigned, int>> succ_maps;
       std::vector<bool> acc_succs;
       
-      std::cerr << "Begin" << std::endl;
       csb_successors(det_ranks, active_index, next_scc_indices, succ_maps, acc_succs, next_detstates[get_detscc_index(active_index)], det_cache);
-      std::cerr << "End" << std::endl;
       complement_mstate new_succ2(new_succ);
       new_succ2.set_active_index(-1);
       bool first = true;
       for (auto s : succ_maps)
       {
-        std::cerr << "Succ state: ";
+        //std::cerr << "Succ state: ";
         std::set<unsigned> C;
         std::set<unsigned> S;
         std::set<unsigned> B;
         for (auto pr : s)
         {
-          std::cerr << "s = " << pr.first << ", r = " << pr.second << std::endl;
+          //std::cerr << "s = " << pr.first << ", r = " << pr.second << std::endl;
           if (first)
             new_succ.detscc_ranks_[get_detscc_index(active_index)].push_back({pr.first, pr.second});
           else
@@ -1864,13 +1905,13 @@ namespace cola
       bool first = true;
       for (auto s : succ_maps)
       {
-        std::cerr << "Succ state: ";
+        //std::cerr << "Succ state: ";
         std::set<unsigned> C;
         std::set<unsigned> S;
         std::set<unsigned> B;
         for (auto pr : s)
         {
-          std::cerr << "s = " << pr.first << ", r = " << pr.second << std::endl;
+          //std::cerr << "s = " << pr.first << ", r = " << pr.second << std::endl;
           if (first)
             new_succ.detscc_ranks_[get_detscc_index(active_index)].push_back({pr.first, pr.second});
           else
@@ -2047,6 +2088,9 @@ namespace cola
       // complementation algorithm
       auto acc = res_->set_buchi();
 
+      spot::print_hoa(std::cerr, aut_);
+      std::cerr << std::endl << std::endl;
+
       // test: scc iteration
       unsigned scc_count = get_scc_info().scc_count();
       auto scc_types = get_scc_types(get_scc_info());
@@ -2125,12 +2169,17 @@ namespace cola
       mh_complement mh(aut_, scc_info, scc_types_);
       bool sink_state = false;
 
+      for (auto p : rank2n_)
+      {
+        std::cerr << get_name(p.first) << " -> " << p.second << std::endl;
+      }
+
       while (!todo_.empty())
       {
         auto top = todo_.front();
         todo_.pop_front();
         complement_mstate ms = top.first;
-        std::cerr << "State: " << get_name(ms) << std::endl;
+        std::cerr << std::endl << "State: " << get_name(ms) << " -> " << top.second << " -> hash: " << ms.hash() << std::endl;
         active_index = ms.active_index_;
 
         // reachable states
@@ -2212,11 +2261,9 @@ namespace cola
             unsigned index = indices[true_index];
 
             // reachable states in this scc
-            std::cerr << "Reachable: " << reachable.size() << std::endl;
             std::set<unsigned> reach_track;
             std::set<unsigned> scc_states(scc_info.states_of(index).begin(), scc_info.states_of(index).end());
             std::set_intersection(scc_states.begin(), scc_states.end(), reachable.begin(), reachable.end(), std::inserter(reach_track, reach_track.begin()));
-            std::cerr << "Reach track: " << reach_track.size() << std::endl;
 
             // successors in this scc
             std::set<unsigned> succ_in_scc;
@@ -2260,7 +2307,6 @@ namespace cola
               {
                 if (active_type or (index != (indices[(orig_index + 1)%indices.size()])))
                 {
-                  std::cerr << "Here" << std::endl;
                   // test: getSuccTrack
                   std::vector<state_rank> ranks;
                   //std::cerr << ms.acc_detsccs_[index].first << " -> " << ms.acc_detsccs_[index][0].second << std::endl;
@@ -2271,12 +2317,10 @@ namespace cola
                     ranks.push_back({s, NCSB_B});
                     /*****/
                   }
-                  std::cerr << "Here" << std::endl;
                   for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].second)
                   {
                     ranks.push_back({s, NCSB_S});
                   }
-                  std::cerr << "Here" << std::endl;
 
                   auto succ = get_succ_track_CSB(reachable, letter, /*ms.detscc_ranks_[get_detscc_index(index)]*/ ranks, index, new_succ, acc_det_succ, true_index - iw_succ.size());
                   if (succ.size() >= 1)
@@ -2357,10 +2401,8 @@ namespace cola
               }
 
               else if (is_accepting_detscc(scc_types_, index))
-              {
-                std::cerr << "Reach track size: " << reach_track.size() << std::endl;
+              { 
                 succ_det = get_succ_active_CSB(reachable, letter, ms.detscc_ranks_[get_detscc_index(active_index)], active_index, new_succ, acc_det_succ, true_index - iw_succ.size());
-                std::cerr << "END" << std::endl;
                 // std::cerr << "Ranks size: " << ms.detscc_ranks_[get_detscc_index(active_index)].size() << std::endl;
                 if (succ_det.size() >= 1)
                 {
@@ -2389,7 +2431,7 @@ namespace cola
           {
             // if (new_succ.iw_break_set_.size() == 0) //!
             if (ms.iw_break_set_.size() == 0)
-                active_type = false;
+              active_type = false;
             if (not active_type){ 
               new_succ.set_active_index((indices[(orig_index + 1)%indices.size()]));
             }
@@ -2397,18 +2439,24 @@ namespace cola
               new_succ.set_active_index(active_index);
             new_succ.set_iw_sccs(iw_succ);
 
-            std::cerr << "New succ: " << get_name(new_succ) << std::endl;
+            std::cerr << "New succ: " << get_name(new_succ);
             if (std::find(all_states.begin(), all_states.end(), new_succ) == all_states.end())
             {
               all_states.push_back(new_succ);
               auto s = new_state(new_succ);
+              std::cerr << " -> new state";
             }
 
             auto p = rank2n_.emplace(new_succ, 0);
-            if (active_type)
+            std::cerr << " -> " << p.first->second << " -> hash: " << new_succ.hash() << std::endl;
+            if (active_type){
               res_->new_edge(top.second, p.first->second, letter);
-            else 
+              std::cerr << "Non-accepting" << std::endl;
+            }
+            else{
               res_->new_edge(top.second, p.first->second, letter, acc);
+              std::cerr << "Accepting" << std::endl;
+            }
           }
 
           // two successors
@@ -2441,6 +2489,11 @@ namespace cola
               else 
                 res_->new_edge(top.second, p.first->second, letter, acc); 
             }
+          }
+
+          for (auto p : rank2n_)
+          {
+            std::cerr << get_name(p.first) << " -> " << p.second << std::endl;
           }
           
         }
