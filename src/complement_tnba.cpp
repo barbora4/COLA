@@ -105,6 +105,7 @@ namespace cola
       this->set_iw_break_set(other.iw_break_set_);
       this->set_active_index(other.active_index_);
       this->set_acc_detsccs(other.acc_detsccs_);
+      this->curr_reachable_ = other.curr_reachable_;
     }
 
     std::set<unsigned>
@@ -149,6 +150,7 @@ namespace cola
       this->set_iw_break_set(other.iw_break_set_);
       this->set_active_index(other.active_index_);
       this->set_acc_detsccs(other.acc_detsccs_);
+      this->curr_reachable_ = other.curr_reachable_;
 
       return *this;
     }
@@ -173,6 +175,7 @@ namespace cola
     std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_detsccs_;
     std::vector<unsigned> iw_break_set_;
     int active_index_ = 0;
+    std::vector<unsigned> curr_reachable_;
 
     void
     set_iw_sccs(std::vector<std::vector<unsigned>> iw_sccs)
@@ -219,7 +222,14 @@ namespace cola
         {
           if (acc_detsccs_ == other.acc_detsccs_)
           {
-            return false;
+            if (curr_reachable_ == other.curr_reachable_)
+            {
+              return false;
+            }
+            else
+            {
+              return curr_reachable_ < other.curr_reachable_;
+            }
           }
           else
           {
@@ -296,6 +306,8 @@ namespace cola
     if (this->iw_break_set_ != other.iw_break_set_)
       return false;
     if (this->acc_detsccs_ != other.acc_detsccs_)
+      return false;
+    if (this->curr_reachable_ != other.curr_reachable_)
       return false;
     return true;
 
@@ -439,6 +451,10 @@ namespace cola
       {
         res ^= (res << 3) ^ v;
       }
+    }
+    for (auto s : curr_reachable_)
+    {
+      res ^= (res << 3) ^ s;
     }
     /*****/
 
@@ -1356,6 +1372,7 @@ namespace cola
         if (curr_det_states[i].second != NCSB_B)
           continue;
 
+        is_b_empty = false; // !!! TODO is it ok?
         is_pre_b_empty = false;
         unsigned curr_s = curr_det_states[i].first;
         for (auto &p : det_cache[curr_s])
@@ -1479,13 +1496,16 @@ namespace cola
       {
         for (auto mp : det_cache)
         {
-          for (auto dst : mp.second)
-          {
-            if (dst.first and succ_nodes[dst.second] == NCSB_B)
+          std::pair<unsigned, int> pr{mp.first, NCSB_B};
+          if (std::find(curr_det_states.begin(), curr_det_states.end(), pr) != curr_det_states.end()){
+            for (auto dst : mp.second)
             {
-              is_b_empty = true;
-              std::cerr << "NOT EMPTY --------------------------" << std::endl;
-              break;
+              if (dst.first and succ_nodes[dst.second] == NCSB_B)
+              {
+                is_b_empty = true;
+                std::cerr << "NOT EMPTY" << std::endl;
+                break;
+              }
             }
           }
         }
@@ -2148,7 +2168,7 @@ namespace cola
       init_state.set_iw_sccs(iw_sccs);
       init_state.set_acc_detsccs(acc_detsccs);
       auto acc_detsccs_orig = acc_detsccs;
-
+      init_state.curr_reachable_.push_back(orig_init);
 
       // get break set for active scc
       if (is_weakscc(scc_types_, active_index) or is_accepting_detscc(scc_types_, active_index))
@@ -2178,16 +2198,16 @@ namespace cola
         active_index = ms.active_index_;
 
         // reachable states
-        std::set<unsigned> reachable;
-        for (auto scc : ms.iw_sccs_)
-        {
-          reachable.insert(scc.begin(), scc.end());
-        }
-        for (auto scc : ms.acc_detsccs_)
-        {
-          reachable.insert(scc.first.begin(), scc.first.end());
-          reachable.insert(scc.second.begin(), scc.second.end());
-        }
+        std::set<unsigned> reachable = std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end());
+        // for (auto scc : ms.iw_sccs_)
+        // {
+        //   reachable.insert(scc.begin(), scc.end());
+        // }
+        // for (auto scc : ms.acc_detsccs_)
+        // {
+        //   reachable.insert(scc.first.begin(), scc.first.end());
+        //   reachable.insert(scc.second.begin(), scc.second.end());
+        // }
 
         // Compute support of all available states.
         bdd msupport = bddtrue;
@@ -2347,7 +2367,7 @@ namespace cola
                     ranks.push_back({s, NCSB_S});
                   }
 
-                  auto succ = get_succ_active_CSB(reachable, letter, /*ms.detscc_ranks_[get_detscc_index(index)]*/ ranks, index, new_succ, acc_det_succ, true_index - iw_succ.size());
+                  auto succ = get_succ_active_CSB(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end())/*reachable*/, letter, /*ms.detscc_ranks_[get_detscc_index(index)]*/ ranks, index, new_succ, acc_det_succ, true_index - iw_succ.size());
                   if (succ.size() >= 1)
                   {
                     // new_succ = succ[0];
@@ -2398,7 +2418,7 @@ namespace cola
               else if (is_accepting_detscc(scc_types_, index))
               { 
                 // getSuccActive
-                succ_det = get_succ_active_CSB((ms.iw_break_set_.empty()) ? reachable : reach_track, letter, ms.detscc_ranks_[get_detscc_index(active_index)], active_index, new_succ, acc_det_succ, true_index - iw_succ.size());
+                succ_det = get_succ_active_CSB((ms.iw_break_set_.empty()) ? std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()) : reach_track, letter, ms.detscc_ranks_[get_detscc_index(active_index)], active_index, new_succ, acc_det_succ, true_index - iw_succ.size());
                 // std::cerr << "Ranks size: " << ms.detscc_ranks_[get_detscc_index(active_index)].size() << std::endl;
                 if (succ_det.size() >= 1)
                 {
@@ -2435,6 +2455,8 @@ namespace cola
               new_succ.set_active_index(active_index);
             new_succ.set_iw_sccs(iw_succ);
 
+            new_succ.curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
+
             std::cerr << "New succ: " << get_name(new_succ);
             if (std::find(all_states.begin(), all_states.end(), new_succ) == all_states.end())
             {
@@ -2469,6 +2491,8 @@ namespace cola
             else
               new_succ2.set_active_index(active_index);
             new_succ2.set_iw_sccs(iw_succ);
+
+            new_succ2.curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
               
             if (not (new_succ == new_succ2))
             {
