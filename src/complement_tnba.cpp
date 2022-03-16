@@ -347,29 +347,31 @@ namespace cola
   std::set<unsigned>
   complement_mstate::get_reach_set() const
   {
-    std::set<unsigned> result;
-    result.insert(weak_set_.begin(), weak_set_.end());
-    for (auto &vec : detscc_ranks_)
-    {
-      for (auto &p : vec)
-      {
-        result.insert(p.first);
-      }
-    }
-    for (auto &p : nondetscc_ranks_)
-    {
-      result.insert(p.begin(), p.end());
-    }
-    for (auto &p : iw_sccs_)
-    {
-      result.insert(p.begin(), p.end());
-    }
-    for (auto &p : acc_detsccs_)
-    {
-      result.insert(p.first.begin(), p.first.end());
-      result.insert(p.second.begin(), p.second.end());
-    }
-    return result;
+    // std::set<unsigned> result;
+    // result.insert(weak_set_.begin(), weak_set_.end());
+    // for (auto &vec : detscc_ranks_)
+    // {
+    //   for (auto &p : vec)
+    //   {
+    //     result.insert(p.first);
+    //   }
+    // }
+    // for (auto &p : nondetscc_ranks_)
+    // {
+    //   result.insert(p.begin(), p.end());
+    // }
+    // for (auto &p : iw_sccs_)
+    // {
+    //   result.insert(p.begin(), p.end());
+    // }
+    // for (auto &p : acc_detsccs_)
+    // {
+    //   result.insert(p.first.begin(), p.first.end());
+    //   result.insert(p.second.begin(), p.second.end());
+    // }
+    // return result;
+
+    return std::set<unsigned>(curr_reachable_.begin(), curr_reachable_.end());
   }
   bool complement_mstate::is_empty() const
   {
