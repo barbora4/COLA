@@ -2169,11 +2169,6 @@ namespace cola
       mh_complement mh(aut_, scc_info, scc_types_);
       bool sink_state = false;
 
-      for (auto p : rank2n_)
-      {
-        std::cerr << get_name(p.first) << " -> " << p.second << std::endl;
-      }
-
       while (!todo_.empty())
       {
         auto top = todo_.front();
@@ -2402,7 +2397,8 @@ namespace cola
 
               else if (is_accepting_detscc(scc_types_, index))
               { 
-                succ_det = get_succ_active_CSB(reachable, letter, ms.detscc_ranks_[get_detscc_index(active_index)], active_index, new_succ, acc_det_succ, true_index - iw_succ.size());
+                // getSuccActive
+                succ_det = get_succ_active_CSB((ms.iw_break_set_.empty()) ? reachable : reach_track, letter, ms.detscc_ranks_[get_detscc_index(active_index)], active_index, new_succ, acc_det_succ, true_index - iw_succ.size());
                 // std::cerr << "Ranks size: " << ms.detscc_ranks_[get_detscc_index(active_index)].size() << std::endl;
                 if (succ_det.size() >= 1)
                 {
@@ -2489,11 +2485,6 @@ namespace cola
               else 
                 res_->new_edge(top.second, p.first->second, letter, acc); 
             }
-          }
-
-          for (auto p : rank2n_)
-          {
-            std::cerr << get_name(p.first) << " -> " << p.second << std::endl;
           }
           
         }
