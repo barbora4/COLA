@@ -316,7 +316,7 @@ int main(int argc, char *argv[])
   std::string file_to_contain;
 
   postprocess_level preprocess = Low;
-  postprocess_level post_process = Low;
+  postprocess_level post_process = Low; 
   bool use_scc = false;
   unsigned num_post = 30000;
 
@@ -718,6 +718,7 @@ int main(int argc, char *argv[])
         else if (complement == COMP)
         {
           aut = cola::complement_tnba(aut, om);
+          output_type = Buchi; 
         }
         else
         {

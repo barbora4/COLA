@@ -1900,7 +1900,7 @@ namespace cola
         auto top = todo_.front();
         todo_.pop_front();
         complement_mstate ms = top.first;
-        // std::cerr << std::endl << "State: " << get_name(ms) << " -> " << top.second << " -> hash: " << ms.hash() << std::endl;
+        //std::cerr << std::endl << "State: " << get_name(ms) << " -> " << top.second << " -> hash: " << ms.hash() << std::endl;
         active_index = ms.active_index_;
 
         // reachable states
@@ -1937,7 +1937,7 @@ namespace cola
         {
           bdd letter = bdd_satoneset(all, msupport, bddfalse);
           all -= letter;
-          // std::cerr << "Current symbol: " << letter << std::endl;
+          //std::cerr << "Current symbol: " << letter << std::endl;
 
           std::set<unsigned> all_succ = mh.get_all_successors(reachable, letter);
 
@@ -2045,7 +2045,7 @@ namespace cola
                   for (auto s : ms.acc_detsccs_[get_detscc_index(index)].first)
                   {
                     ranks.push_back({s, NCSB_C});
-                    ranks.push_back({s, NCSB_B}); //!
+                    ranks.push_back({s, NCSB_B}); 
                   }
                   for (auto s : ms.acc_detsccs_[get_detscc_index(index)].second)
                   {
@@ -2070,7 +2070,10 @@ namespace cola
               }
 
               else
-                throw std::runtime_error("nondeterministic accepting sccs not supported yet");
+              {
+                  std::cerr << "ERROR" << std::endl;
+                  throw std::runtime_error("nondeterministic accepting sccs not supported yet");
+              }
             }
 
             else
@@ -2114,7 +2117,10 @@ namespace cola
               }
 
               else
-                throw std::runtime_error("nondeterministic accepting sccs not supported yet");
+              {
+                  std::cerr << "ERROR" << std::endl;
+                  throw std::runtime_error("nondeterministic accepting sccs not supported yet");
+              }
               
             }
           }
@@ -2132,7 +2138,7 @@ namespace cola
 
             new_succ.curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
 
-            // std::cerr << "New succ: " << get_name(new_succ);
+            //std::cerr << "New succ: " << get_name(new_succ);
             if (std::find(all_states.begin(), all_states.end(), new_succ) == all_states.end())
             {
               all_states.push_back(new_succ);
@@ -2163,7 +2169,7 @@ namespace cola
               
             if (not (new_succ == new_succ2))
             {
-              // std::cerr << "New succ 2: " << get_name(new_succ2) << std::endl;
+              //std::cerr << "New succ 2: " << get_name(new_succ2) << std::endl;
               if (std::find(all_states.begin(), all_states.end(), new_succ2) == all_states.end())
               {
                 all_states.push_back(new_succ2);
@@ -2182,8 +2188,9 @@ namespace cola
 
       }
 
-      // spot::print_hoa(std::cerr, res_);
-      // std::cerr << std::endl;
+      //spot::print_hoa(std::cerr, res_);
+      //std::cerr << std::endl;
+      
       return res_;
 
     }
