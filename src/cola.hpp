@@ -61,6 +61,12 @@ enum automaton_type
   LIMIT_DETERMINISTIC = 4
 };
 
+// Complement decomposition options
+struct compl_decomp_options
+{
+  bool merge_iwa = false;
+};
+
 namespace cola
 {
 
@@ -94,7 +100,7 @@ namespace cola
   /// The automaton \a aut should be an elevator automaton for now.
   /// Output a generalized Buchi automaton
   spot::twa_graph_ptr
-  complement_tnba(const spot::const_twa_graph_ptr &aut, spot::option_map &om);
+  complement_tnba(const spot::const_twa_graph_ptr &aut, spot::option_map &om, compl_decomp_options decomp_options);
 
 
   spot::twa_graph_ptr

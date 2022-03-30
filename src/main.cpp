@@ -315,6 +315,8 @@ int main(int argc, char *argv[])
   bool congr = false;
   std::string file_to_contain;
 
+  compl_decomp_options decomp_options;
+
   postprocess_level preprocess = Low;
   postprocess_level post_process = Low; 
   bool use_scc = false;
@@ -459,6 +461,10 @@ int main(int argc, char *argv[])
     else if (arg == "--algo=congr")
     {
       complement = CONGR;
+    }
+    else if (arg == "--merge-iwa")
+    {
+      decomp_options.merge_iwa = true;
     }
     else if (arg == "-f")
     {
@@ -717,13 +723,13 @@ int main(int argc, char *argv[])
         }
         else if (complement == COMP)
         {
-          aut = cola::complement_tnba(aut, om);
+          aut = cola::complement_tnba(aut, om, decomp_options);
           output_type = Buchi; 
         }
         else
         {
           // set NCSB algorithm later
-          aut = cola::complement_tnba(aut, om);
+          aut = cola::complement_tnba(aut, om, decomp_options);
         }
       }else if (comp && determinize)
       {
