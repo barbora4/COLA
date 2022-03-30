@@ -45,3 +45,9 @@ To output a deterministic Parity automaton, use ```./cola --algo=cola filename``
 To output a deterministic Rabin automaton, use ```./cola --algo=cola filename --rabin```
 
 To output a complement automaton, use ```./cola --algo=cola filename --complement```
+
+### Complementation
+Complementation using decomposition: ```./cola --algo=comp [options] filename```
+
+Options:
+* ```--merge-iwa``` - merge all IWA SCCs into one
