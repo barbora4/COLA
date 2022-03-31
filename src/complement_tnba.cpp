@@ -2159,8 +2159,10 @@ namespace cola
                       iw_succ[0] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
                     else
                       iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
-                    new_succ[0].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
-                    new_succ[1].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+                    for (unsigned i=0; i<new_succ.size(); i++)
+                    {
+                      new_succ[i].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+                    }
                   }
                 }
               }
@@ -2316,8 +2318,10 @@ namespace cola
                       iw_succ[0] = std::vector<unsigned>(succ_at.first.first.begin(), succ_at.first.first.end());
                     else
                       iw_succ[true_index] = std::vector<unsigned>(succ_at.first.first.begin(), succ_at.first.first.end());
-                    new_succ[0].set_iw_break_set(std::vector<unsigned>(succ_at.first.second.begin(), succ_at.first.second.end()));
-                    new_succ[1].set_iw_break_set(std::vector<unsigned>(succ_at.first.second.begin(), succ_at.first.second.end()));
+                    for (unsigned i=0; i<new_succ.size(); i++)
+                    {
+                      new_succ[i].set_iw_break_set(std::vector<unsigned>(succ_at.first.second.begin(), succ_at.first.second.end()));
+                    }
                   }
 
                   if (succ_active.first.size() > 0)
