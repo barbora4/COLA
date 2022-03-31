@@ -466,6 +466,10 @@ int main(int argc, char *argv[])
     {
       decomp_options.merge_iwa = true;
     }
+    else if (arg == "--merge-det")
+    {
+      decomp_options.merge_det = true;
+    }
     else if (arg == "-f")
     {
       if (argc < i + 1)

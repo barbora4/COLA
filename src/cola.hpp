@@ -65,6 +65,7 @@ enum automaton_type
 struct compl_decomp_options
 {
   bool merge_iwa = false;
+  bool merge_det = false;
 };
 
 namespace cola
