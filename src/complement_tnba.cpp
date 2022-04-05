@@ -2393,64 +2393,67 @@ namespace cola
             }
           }
 
-          if (new_succ[0].active_index_ != -2)
+          for (unsigned i=0; i<new_succ.size(); i++)
           {
-            if (ms.iw_break_set_.size() == 0)
-              active_type = false;
-            if (not active_type){ 
-              new_succ[0].set_active_index((indices[(orig_index + 1)%indices.size()]));
-            }
-            else
-              new_succ[0].set_active_index(active_index);
-            new_succ[0].set_iw_sccs(iw_succ);
-
-            new_succ[0].curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
-
-            // std::cerr << "New succ: " << get_name(new_succ) << std::endl;
-            if (std::find(all_states.begin(), all_states.end(), new_succ[0]) == all_states.end())
+            if (new_succ[i].active_index_ != -2)
             {
-              all_states.push_back(new_succ[0]);
-              auto s = new_state(new_succ[0]);
-            }
+              if (ms.iw_break_set_.size() == 0)
+                active_type = false;
+              if (not active_type){ 
+                new_succ[i].set_active_index((indices[(orig_index + 1)%indices.size()]));
+              }
+              else
+                new_succ[i].set_active_index(active_index);
+              new_succ[i].set_iw_sccs(iw_succ);
 
-            auto p = rank2n_.emplace(new_succ[0], 0);
-            if (active_type)
-              res_->new_edge(top.second, p.first->second, letter);
-            else
-              res_->new_edge(top.second, p.first->second, letter, acc);
+              new_succ[i].curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
+
+              // std::cerr << "New succ: " << get_name(new_succ) << std::endl;
+              if (std::find(all_states.begin(), all_states.end(), new_succ[i]) == all_states.end())
+              {
+                all_states.push_back(new_succ[i]);
+                auto s = new_state(new_succ[i]);
+              }
+
+              auto p = rank2n_.emplace(new_succ[i], 0);
+              if (active_type)
+                res_->new_edge(top.second, p.first->second, letter);
+              else
+                res_->new_edge(top.second, p.first->second, letter, acc);
+            }
           }
 
           // two successors
-          if (new_succ[1].active_index_ != -2)
-          {
-            if (ms.iw_break_set_.size() == 0)
-              active_type2 = false;
-            if (not active_type2)
-            { 
-              new_succ[1].set_active_index((indices[(orig_index + 1)%indices.size()]));
-            } 
-            else
-              new_succ[1].set_active_index(active_index);
-            new_succ[1].set_iw_sccs(iw_succ);
+          // if (new_succ[1].active_index_ != -2)
+          // {
+          //   if (ms.iw_break_set_.size() == 0)
+          //     active_type2 = false;
+          //   if (not active_type2)
+          //   { 
+          //     new_succ[1].set_active_index((indices[(orig_index + 1)%indices.size()]));
+          //   } 
+          //   else
+          //     new_succ[1].set_active_index(active_index);
+          //   new_succ[1].set_iw_sccs(iw_succ);
 
-            new_succ[1].curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
+          //   new_succ[1].curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
               
-            if (not (new_succ[0] == new_succ[1]))
-            {
-              // std::cerr << "New succ 2: " << get_name(new_succ[1]) << std::endl;
-              if (std::find(all_states.begin(), all_states.end(), new_succ[1]) == all_states.end())
-              {
-                all_states.push_back(new_succ[1]);
-                auto s = new_state(new_succ[1]);
-              }
+          //   if (not (new_succ[0] == new_succ[1]))
+          //   {
+          //     // std::cerr << "New succ 2: " << get_name(new_succ[1]) << std::endl;
+          //     if (std::find(all_states.begin(), all_states.end(), new_succ[1]) == all_states.end())
+          //     {
+          //       all_states.push_back(new_succ[1]);
+          //       auto s = new_state(new_succ[1]);
+          //     }
 
-              auto p = rank2n_.emplace(new_succ[1], 0);
-              if (active_type2)
-                res_->new_edge(top.second, p.first->second, letter);
-              else 
-                res_->new_edge(top.second, p.first->second, letter, acc); 
-            }
-          }
+          //     auto p = rank2n_.emplace(new_succ[1], 0);
+          //     if (active_type2)
+          //       res_->new_edge(top.second, p.first->second, letter);
+          //     else 
+          //       res_->new_edge(top.second, p.first->second, letter, acc); 
+          //   }
+          // }
           
         }
 
