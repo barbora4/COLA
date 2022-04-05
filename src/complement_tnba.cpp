@@ -2188,7 +2188,7 @@ namespace cola
                   }
                   else 
                   {
-                    for (unsigned i=iw_succ.size(); i<iw_succ.size() + acc_det_succ.size(); i++)
+                    for (unsigned i=0; i<acc_det_succ.size(); i++)
                     {
                       for (auto s : ms.acc_detsccs_[i].first)
                       {
@@ -2202,25 +2202,23 @@ namespace cola
                     }
                   }
 
-                  unsigned j = 0;
                   for (auto i : index)
                   {
-                    auto succ = get_succ_track_CSB(reachable, letter, ranks, i, new_succ[0], acc_det_succ, true_index - iw_succ.size() + j);
+                    auto succ = get_succ_track_CSB(reachable, letter, ranks, i, new_succ[0], acc_det_succ, true_index - iw_succ.size());
                     if (succ.size() >= 1)
                     {
                       if (new_succ[0].acc_detsccs_.empty())
                         new_succ[0].set_acc_detsccs(acc_det_succ);
-                      new_succ[0].acc_detsccs_[true_index - iw_succ.size() + j] = succ[0].acc_detsccs_[true_index - iw_succ.size() + j];
+                      new_succ[0].acc_detsccs_[true_index - iw_succ.size() ] = succ[0].acc_detsccs_[true_index - iw_succ.size() ];
                       if (new_succ[1].acc_detsccs_.empty())
                         new_succ[1].set_acc_detsccs(acc_detsccs_orig); 
-                      new_succ[1].acc_detsccs_[true_index - iw_succ.size() + j] = succ[0].acc_detsccs_[true_index - iw_succ.size() + j]; 
+                      new_succ[1].acc_detsccs_[true_index - iw_succ.size() ] = succ[0].acc_detsccs_[true_index - iw_succ.size() ]; 
                     }
                     else
                     {
                       new_succ[0].set_active_index(-2);
                       new_succ[1].set_active_index(-2);
                     }
-                    j++;
                   }
                   
                 }
@@ -2243,7 +2241,7 @@ namespace cola
                   }
                   else 
                   {
-                    for (unsigned i=iw_succ.size(); i<iw_succ.size() + acc_det_succ.size(); i++)
+                    for (unsigned i=0; i<acc_det_succ.size(); i++)
                     {
                       for (auto s : ms.acc_detsccs_[i].first)
                       {
@@ -2257,22 +2255,21 @@ namespace cola
                     }
                   }
 
-                  unsigned j = 0;
                   for (auto i : index)
                   {
                     // get successors for every deterministic component
                     // TODO CONTINUE HERE - MORE POSSIBLE SUCCESSORS!!!
-                    auto succ = get_succ_active_CSB(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), letter, ranks, i, new_succ[0], acc_det_succ, true_index - iw_succ.size() + j);
+                    auto succ = get_succ_active_CSB(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), letter, ranks, i, new_succ[0], acc_det_succ, true_index - iw_succ.size());
 
                     if (succ.size() >= 1)
                     {
                       if (new_succ[0].acc_detsccs_.empty())
                         new_succ[0].set_acc_detsccs(acc_det_succ);
-                      new_succ[0].acc_detsccs_[true_index - iw_succ.size() + j] = succ[0].acc_detsccs_[true_index - iw_succ.size() + j];
+                      new_succ[0].acc_detsccs_[true_index - iw_succ.size()] = succ[0].acc_detsccs_[true_index - iw_succ.size()];
                       new_succ[0].iw_break_set_ = succ[0].iw_break_set_;
                       if ((not new_succ[1].acc_detsccs_.empty()) and succ.size() >= 2)
                       {
-                        new_succ[1].acc_detsccs_[true_index - iw_succ.size() + j] = succ[1].acc_detsccs_[true_index - iw_succ.size() + j];
+                        new_succ[1].acc_detsccs_[true_index - iw_succ.size()] = succ[1].acc_detsccs_[true_index - iw_succ.size()];
                         new_succ[1].iw_break_set_ = succ[1].iw_break_set_;
                       }
                       else
@@ -2283,7 +2280,6 @@ namespace cola
                       new_succ[0].set_active_index(-2);
                       new_succ[1].set_active_index(-2);
                     }
-                    j++;
                   }
                   
                 }
@@ -2352,10 +2348,9 @@ namespace cola
                 
                 // get successors for every scc
                 // TODO CONTINUE HERE - MORE POSSIBLE SUCCESSORS!!!
-                unsigned j=0;
                 for (auto i : index)
                 {
-                  succ_det = get_succ_active_CSB((ms.iw_break_set_.empty()) ? std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()) : reach_track, letter, ms.detscc_ranks_[get_detscc_index(i)], i, new_succ[0], acc_det_succ, true_index - iw_succ.size() + j);
+                  succ_det = get_succ_active_CSB((ms.iw_break_set_.empty()) ? std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()) : reach_track, letter, ms.detscc_ranks_[get_detscc_index(i)], i, new_succ[0], acc_det_succ, true_index - iw_succ.size());
 
                   if (succ_det.size() >= 1)
                   {
@@ -2378,8 +2373,6 @@ namespace cola
                     new_succ[0].set_active_index(-2);
                     new_succ[1].set_active_index(-2);
                   }
-
-                  j++;
                 }
                 
               }
@@ -2422,38 +2415,6 @@ namespace cola
                 res_->new_edge(top.second, p.first->second, letter, acc);
             }
           }
-
-          // two successors
-          // if (new_succ[1].active_index_ != -2)
-          // {
-          //   if (ms.iw_break_set_.size() == 0)
-          //     active_type2 = false;
-          //   if (not active_type2)
-          //   { 
-          //     new_succ[1].set_active_index((indices[(orig_index + 1)%indices.size()]));
-          //   } 
-          //   else
-          //     new_succ[1].set_active_index(active_index);
-          //   new_succ[1].set_iw_sccs(iw_succ);
-
-          //   new_succ[1].curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
-              
-          //   if (not (new_succ[0] == new_succ[1]))
-          //   {
-          //     // std::cerr << "New succ 2: " << get_name(new_succ[1]) << std::endl;
-          //     if (std::find(all_states.begin(), all_states.end(), new_succ[1]) == all_states.end())
-          //     {
-          //       all_states.push_back(new_succ[1]);
-          //       auto s = new_state(new_succ[1]);
-          //     }
-
-          //     auto p = rank2n_.emplace(new_succ[1], 0);
-          //     if (active_type2)
-          //       res_->new_edge(top.second, p.first->second, letter);
-          //     else 
-          //       res_->new_edge(top.second, p.first->second, letter, acc); 
-          //   }
-          // }
           
         }
 
