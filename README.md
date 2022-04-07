@@ -50,4 +50,5 @@ To output a complement automaton, use ```./cola --algo=cola filename --complemen
 Complementation using decomposition: ```./cola --algo=comp [options] filename```
 
 Options:
-* ```--merge-iwa``` - merge all IWA SCCs into one
+* ```--merge-iwa``` - merge all IWA SCCs
+* ```--merge-det``` - merge all deterministic SCCs
