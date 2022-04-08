@@ -1898,7 +1898,7 @@ namespace cola
         {
           acc_detsccs_.push_back(i);
         }
-        else if (is_weakscc(scc_types_, i))
+        else if (is_accepting_weakscc(scc_types_, i))
         {
           weaksccs_.push_back(i);
           if (not is_accepting_weakscc(scc_types_, i))
@@ -1911,7 +1911,7 @@ namespace cola
         }
       }
 
-      // std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() - nonacc_weak << ", NON-ACC: " << nonacc_weak << std::endl << std::endl;
+      // std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() - nonacc_weak << ", NON-ACC: " << nonacc_weak << std::endl << std::endl; 
     }
 
     unsigned
@@ -1944,7 +1944,7 @@ namespace cola
       auto scc_info = get_scc_info();
       complement_mstate init_state(scc_info, acc_detsccs_.size());
       unsigned orig_init = aut_->get_init_state_number();
-      unsigned active_index = scc_info.scc_of(orig_init);
+      int active_index = scc_info.scc_of(orig_init);
       if (decomp_options_.merge_iwa and is_weakscc(scc_types_, active_index))
       {
         init_state.set_active_index(this->weaksccs_[0]);
@@ -1955,7 +1955,23 @@ namespace cola
       }
       else
       {
-        init_state.set_active_index(active_index);
+        if (is_weakscc(scc_types_, active_index) and (not is_accepting_weakscc(scc_types_, active_index)))
+        {
+          // initial state in nonaccepting scc
+          unsigned tmp_index = active_index;
+          do 
+          {
+            active_index = (active_index + 1) % si_.scc_count();
+
+            if (active_index == tmp_index)
+              break;
+          } while (is_weakscc(scc_types_, active_index) and (not is_accepting_weakscc(scc_types_, active_index)));
+          init_state.set_active_index(active_index);
+        }
+        else
+        {
+          init_state.set_active_index(active_index);
+        }
       }
 
       std::vector<complement_mstate> all_states;
@@ -1966,7 +1982,7 @@ namespace cola
       // weak SCCs
       for (unsigned index : weaksccs_)
       {
-        if (index != active_index)
+        if (index != active_index or active_index != si_.scc_of(orig_init))
           iw_sccs.push_back(std::vector<unsigned>());
         else
           iw_sccs.push_back(std::vector<unsigned>(1, orig_init));
@@ -1985,7 +2001,7 @@ namespace cola
       {
         for (unsigned index : acc_detsccs_)
         {
-          if (index != active_index)
+          if (index != active_index or scc_info.scc_of(orig_init) != active_index)
             acc_detsccs.push_back({std::vector<unsigned>(), std::vector<unsigned>()});
           else
           {
@@ -2027,6 +2043,9 @@ namespace cola
         init_state.set_iw_break_set(std::vector<unsigned>());
       }
 
+      if (scc_info.scc_of(orig_init) != active_index)
+        init_state.set_iw_break_set(std::vector<unsigned>());
+
       // std::cerr << "Initial: " << get_name(init_state) << std::endl;
       auto init = new_state(init_state);
       res_->set_init_state(init); 
@@ -2043,6 +2062,13 @@ namespace cola
         complement_mstate ms = top.first;
         // std::cerr << std::endl << "State: " << get_name(ms) << std::endl;
         active_index = ms.active_index_;
+
+        if (active_index >= 0 and is_weakscc(scc_types_, active_index) and (not is_accepting_weakscc(scc_types_, active_index)))
+        {
+          ms.active_index_ = (ms.active_index_ + 1) % si_.scc_count();
+          todo_.emplace_back(ms, top.second);
+          continue;
+        }
 
         // reachable states
         std::set<unsigned> reachable = std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end());
@@ -2191,7 +2217,7 @@ namespace cola
               {
                 iwa_done = true;
                 // getSuccTrack
-                if (active_type or ((index[0] != (indices[(orig_index + 1)%indices.size()]))))
+                if (active_type or ((index[0] != (indices[(orig_index + 1)%indices.size()]))) or (not is_accepting_weakscc(scc_types_, index[0])))
                 {
                   auto succ_track = mh.get_succ_track(reachable, reach_track, letter, index);
                   for (auto succ : succ_track)
@@ -2305,11 +2331,12 @@ namespace cola
 
             else
             {
+              // active component
               if (is_weakscc(scc_types_, index[0]))
               {
                 iwa_done = true;
                 // getSuccActive
-                if ((not decomp_options_.merge_iwa) or this->acc_detsccs_.size() > 0 or not ms.iw_break_set_.empty())
+                if ((not decomp_options_.merge_iwa and this->weaksccs_.size() + this->acc_detsccs_.size() > 1) or this->acc_detsccs_.size() > 0 or not ms.iw_break_set_.empty())
                 {
                   auto succ_active = mh.get_succ_active(reachable, reach_track, letter, index, ms.iw_break_set_);
                   for (auto succ_tt : succ_active.first)
@@ -2348,6 +2375,7 @@ namespace cola
                     //new_succ[1].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
                     new_succ[1].set_active_index(-2);
                   }
+                  active_type = true; 
                 }
                 
               }
@@ -2376,7 +2404,6 @@ namespace cola
                   }
                   reach_track = tmp;
                 }
-
 
                 for (auto i : index)
                 {
@@ -2424,6 +2451,9 @@ namespace cola
                 active_type = false;
               if (not active_type){ 
                 new_succ[i].set_active_index((indices[(orig_index + 1)%indices.size()]));
+                
+                while (is_weakscc(scc_types_, new_succ[i].active_index_) and (not is_accepting_weakscc(scc_types_, new_succ[i].active_index_)))
+                  new_succ[i].active_index_ = (new_succ[i].active_index_ + 1) % indices.size();
               }
               else
                 new_succ[i].set_active_index(active_index);
