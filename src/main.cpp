@@ -470,6 +470,10 @@ int main(int argc, char *argv[])
     {
       decomp_options.merge_det = true;
     }
+    else if (arg == "--tgba")
+    {
+      decomp_options.tgba = false;
+    }
     else if (arg == "-f")
     {
       if (argc < i + 1)

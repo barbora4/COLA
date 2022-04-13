@@ -66,6 +66,7 @@ struct compl_decomp_options
 {
   bool merge_iwa = false;
   bool merge_det = false;
+  bool tgba = false;
 };
 
 namespace cola
