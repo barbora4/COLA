@@ -745,9 +745,13 @@ int main(int argc, char *argv[])
       }
       const char *opts = nullptr;
       aut->merge_edges();
-      if (om.get(VERBOSE_LEVEL) > 0)
+      if (om.get(VERBOSE_LEVEL) > 0) 
+      {
         std::cout << "Number of (states, transitions, colors) in the result automaton: ("
                   << aut->num_states() << "," << aut->num_edges() << "," << aut->num_sets() << ")" << std::endl;
+        spot::print_hoa(std::cout, aut);
+        std::cout << std::endl;
+      }
       // postprocessing, remove dead states
       //aut->purge_unreachable_states();
       if (post_process != None && !decompose)

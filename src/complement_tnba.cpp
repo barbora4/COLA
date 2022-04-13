@@ -598,6 +598,7 @@ namespace cola
   {
     std::set<unsigned> successors;
 
+
     for (unsigned s : current_states)
     {
       for (const auto &t : aut_->out(s))
@@ -746,7 +747,9 @@ namespace cola
       {
         p.first->second = res_->new_state();
         if (show_names_)
+        {
           names_->push_back(get_name(p.first->first));
+        }
         todo_.emplace_back(dup, p.first->second);
       }
       return p.first->second;
@@ -1567,7 +1570,7 @@ namespace cola
           delayed_simulator_(aut, om),
           show_names_(om.get(VERBOSE_LEVEL) >= 1)
     {
-
+      
       if (om.get(VERBOSE_LEVEL) >= 2)
       {
         simulator_.output_simulation();
@@ -1615,8 +1618,8 @@ namespace cola
         else if (is_accepting_weakscc(scc_types_, i))
         {
           weaksccs_.push_back(i);
-          if (not is_accepting_weakscc(scc_types_, i))
-            nonacc_weak++;
+          // if (not is_accepting_weakscc(scc_types_, i))
+          //   nonacc_weak++;
         }
         else if (is_accepting_nondetscc(scc_types_, i))
         {
@@ -1625,7 +1628,7 @@ namespace cola
         }
       }
 
-      // std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() - nonacc_weak << ", NON-ACC: " << nonacc_weak << std::endl << std::endl; 
+      std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() << std::endl << std::endl; 
     }
 
     unsigned
@@ -1643,6 +1646,12 @@ namespace cola
     spot::twa_graph_ptr
     run()
     {
+      if (show_names_)
+      {
+        names_ = new std::vector<std::string>();
+        res_->set_named_prop("state-names", names_);
+      }
+
       if (this->weaksccs_.size() == 0)
         decomp_options_.merge_iwa = false;
       if (this->acc_detsccs_.size() == 0)
@@ -1651,8 +1660,8 @@ namespace cola
       // complementation algorithm
       auto acc = res_->set_buchi();
 
-      // spot::print_hoa(std::cerr, aut_);
-      // std::cerr << std::endl << std::endl;
+      spot::print_hoa(std::cerr, aut_);
+      std::cerr << std::endl << std::endl;
 
       // initial macrostate
       auto scc_info = get_scc_info();
@@ -1770,7 +1779,7 @@ namespace cola
       bool sink_state = false;
 
       while (!todo_.empty())
-      {
+      { 
         auto top = todo_.front();
         todo_.pop_front();
         complement_mstate ms = top.first;
@@ -1814,6 +1823,7 @@ namespace cola
             sink_state = true;
           }
         }
+        
         while (all != bddfalse)
         {
           bdd letter = bdd_satoneset(all, msupport, bddfalse);
@@ -2189,9 +2199,7 @@ namespace cola
                 res_->new_edge(top.second, p.first->second, letter, acc);
             }
           }
-          
         }
-
       }
 
       //spot::print_hoa(std::cerr, res_);
