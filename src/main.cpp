@@ -472,7 +472,7 @@ int main(int argc, char *argv[])
     }
     else if (arg == "--tgba")
     {
-      decomp_options.tgba = false;
+      decomp_options.tgba = true;
     }
     else if (arg == "-f")
     {
