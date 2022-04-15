@@ -1680,7 +1680,11 @@ namespace cola
       }
 
       // complementation algorithm
-      auto acc = res_->set_buchi();
+      // auto acc = res_->set_buchi();
+      if (decomp_options_.tgba)
+        res_->set_generalized_buchi(2);
+      else 
+        res_->set_generalized_buchi(1);
 
       spot::print_hoa(std::cerr, aut_);
       std::cerr << std::endl << std::endl;
@@ -1785,12 +1789,12 @@ namespace cola
       init_state.curr_reachable_.push_back(orig_init);
 
       // get break set for active scc
-      if (is_weakscc(scc_types_, active_index))
+      if (is_weakscc(scc_types_, active_index) and active_index == scc_info.scc_of(orig_init))
       { 
         init_state.set_iw_break_set(std::vector<unsigned>(1, orig_init)); 
         init_state.det_break_set_ = std::vector<unsigned>();
       }
-      else if (is_accepting_detscc(scc_types_, active_index))
+      else if (is_accepting_detscc(scc_types_, active_index) and active_index == scc_info.scc_of(orig_init))
       {
         init_state.det_break_set_ = std::vector<unsigned>(1, orig_init); 
         init_state.iw_break_set_ = std::vector<unsigned>();
@@ -1853,8 +1857,13 @@ namespace cola
           res_->new_edge(top.second, sink, !all);
           if (not sink_state)
           {
-            res_->new_edge(sink, sink, !all, acc);
-            res_->new_edge(sink, sink, all, acc);
+            res_->new_edge(sink, sink, !all, {0});
+            res_->new_edge(sink, sink, all, {0});
+            if (decomp_options_.tgba)
+            {
+              res_->new_edge(sink, sink, !all, {1});
+              res_->new_edge(sink, sink, all, {1});
+            }
             sink_state = true;
           }
         }
@@ -1968,7 +1977,7 @@ namespace cola
             std::set_intersection(scc_states.begin(), scc_states.end(), all_succ.begin(), all_succ.end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
 
             // non-active component
-            if (std::find(index.begin(), index.end(), active_index) == index.end())
+            if (std::find(index.begin(), index.end(), active_index) == index.end() and (not decomp_options_.tgba or not is_weakscc(scc_types_, index[0]))) // TODO check!
             {
               std::cerr << "Non-active" << std::endl;
               // non-active scc
@@ -2096,8 +2105,9 @@ namespace cola
               {
                 iwa_done = true;
                 // getSuccActive
-                if ((not decomp_options_.merge_iwa and this->weaksccs_.size() + this->acc_detsccs_.size() > 1) or this->acc_detsccs_.size() > 0 or not ms.iw_break_set_.empty())
+                if ((not decomp_options_.tgba and ((not decomp_options_.merge_iwa and this->weaksccs_.size() + this->acc_detsccs_.size() > 1) or this->acc_detsccs_.size() > 0 or not ms.iw_break_set_.empty())) or not ms.iw_break_set_.empty())
                 {
+                  std::cerr << "MH succ active" << std::endl;
                   auto succ_active = mh.get_succ_active(reachable, reach_track, letter, index, ms.iw_break_set_);
                   for (auto succ_tt : succ_active.first)
                   {
@@ -2122,6 +2132,7 @@ namespace cola
                     active_type = false;
                 }
 
+                // getSuccTrackToActive 
                 else 
                 {
                   auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
@@ -2132,8 +2143,8 @@ namespace cola
                     else
                       iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
                     new_succ[0].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
-                    //new_succ[1].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
-                    new_succ[1].set_active_index(-2);
+                    new_succ[1].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+                    //new_succ[1].set_active_index(-2);
                   }
                   active_type = true; 
                 }
@@ -2212,7 +2223,10 @@ namespace cola
           {
             if (new_succ[i].active_index_ != -2)
             {
+              active_type = true;
               if (ms.iw_break_set_.size() == 0 and ms.det_break_set_.size() == 0)
+                active_type = false;
+              if (decomp_options_.tgba and ms.det_break_set_.size() == 0)
                 active_type = false;
               if (not active_type){ 
                 new_succ[i].set_active_index((indices[(orig_index + 1)%indices.size()]));
@@ -2251,14 +2265,17 @@ namespace cola
               if (active_type)
                 res_->new_edge(top.second, p.first->second, letter);
               else 
-                res_->new_edge(top.second, p.first->second, letter, acc);
+                res_->new_edge(top.second, p.first->second, letter, {0});
+              
+              if (decomp_options_.tgba and ms.iw_break_set_.size() == 0)
+                res_->new_edge(top.second, p.first->second, letter, {1});
             }
           }
         }
       }
 
-      //spot::print_hoa(std::cerr, res_);
-      //std::cerr << std::endl;
+      spot::print_hoa(std::cerr, res_);
+      std::cerr << std::endl;
       
       return res_;
 
