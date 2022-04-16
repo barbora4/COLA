@@ -162,7 +162,8 @@ enum output_aut_type
   Generic = 0,
   Parity,
   Rabin,
-  Buchi
+  Buchi,
+  GeneralizedBuchi
 };
 
 // We may provide multiple algorithms for comparison
@@ -732,7 +733,7 @@ int main(int argc, char *argv[])
         else if (complement == COMP)
         {
           aut = cola::complement_tnba(aut, om, decomp_options);
-          output_type = Buchi; 
+          output_type = GeneralizedBuchi; 
         }
         else
         {
@@ -761,7 +762,7 @@ int main(int argc, char *argv[])
         {
           aut = spot::minimize_monitor(aut);
         }
-        else if (output_type != Buchi)//if (aut->num_states() < num_post)
+        else if (output_type != Buchi and output_type != GeneralizedBuchi)//if (aut->num_states() < num_post)
         {
           spot::postprocessor p;
           if (output_type == Parity)
@@ -820,7 +821,7 @@ int main(int argc, char *argv[])
           {
             p.set_level(spot::postprocessor::High);
           }
-          if (output_type != Buchi) p.set_pref(spot::postprocessor::Deterministic);
+          if (output_type != Buchi and output_type != GeneralizedBuchi) p.set_pref(spot::postprocessor::Deterministic);
           if (output_type == Generic)
           {
             p.set_type(spot::postprocessor::Generic);
@@ -828,9 +829,14 @@ int main(int argc, char *argv[])
           else if (output_type == Parity)
           {
             p.set_type(spot::postprocessor::Parity);
-          }else if (output_type == Buchi)
+          }
+          else if (output_type == Buchi)
           {
             p.set_type(spot::postprocessor::Buchi);
+          }
+          else if (output_type == GeneralizedBuchi)
+          {
+            p.set_type(spot::postprocessor::GeneralizedBuchi);
           }
           aut = p.run(aut);
         }
