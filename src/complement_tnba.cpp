@@ -24,6 +24,7 @@
 #include <deque>
 #include <map>
 #include <set>
+#include <stack>
 
 #include <spot/misc/hashfunc.hh>
 #include <spot/twaalgos/isdet.hh>
@@ -494,16 +495,73 @@ namespace cola
     const spot::const_twa_graph_ptr aut_;
     spot::scc_info scc_info_;
     std::string scc_types_;
+    compl_decomp_options decomp_options_;
+    std::vector<std::pair<unsigned, unsigned>> dir_sim_;
+    std::vector<std::set<int>> reachable_vector_;
 
   public:
-    mh_complement(const spot::const_twa_graph_ptr& aut, spot::scc_info& scc_info, std::string scc_types) : aut_(aut), scc_info_(scc_info), scc_types_(scc_types){}
+    mh_complement(const spot::const_twa_graph_ptr& aut, spot::scc_info& scc_info, std::string scc_types, compl_decomp_options decomp_options, std::vector<std::pair<unsigned, unsigned>> dir_sim) : aut_(aut), scc_info_(scc_info), scc_types_(scc_types), decomp_options_(decomp_options), dir_sim_(dir_sim){}
 
     std::vector<std::pair<std::set<unsigned>, unsigned>> get_succ_track(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index);
     std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index);
     std::pair<std::vector<std::pair<std::set<unsigned>, unsigned>>, std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>> get_succ_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index, std::vector<unsigned> break_set);
 
     std::set<unsigned> get_all_successors(std::set<unsigned> current_states, bdd symbol);
+    void get_reachable_vector();
+    std::set<int> reachable_vertices(std::vector<std::vector<int>> list, std::set<int> from);
   };
+
+  void 
+  mh_complement::get_reachable_vector() 
+  {
+    std::vector<std::set<int>> list_set(aut_->num_states());
+    std::vector<std::vector<int>> list_vector(aut_->num_states());
+
+    for (unsigned s=0; s<aut_->num_states(); s++)
+    {
+      reachable_vector_.push_back(std::set<int>());
+      list_set[s] = std::set<int>();
+
+      // iterate over all transitions from s
+      for (const auto &t : aut_->out(s))
+      {
+        list_set[s].insert(t.dst);
+      }
+
+      list_vector[s] = std::vector<int>(list_set[s].begin(), list_set[s].end());
+    }
+
+    for (int s=0; s<aut_->num_states(); s++)
+    {
+      std::set<int> tmp({s});
+      reachable_vector_[s] = reachable_vertices(list_vector, tmp);
+    }
+  }
+
+  std::set<int>
+  mh_complement::reachable_vertices(std::vector<std::vector<int>> list, std::set<int> from)
+  {
+    std::set<int> all(from);
+    std::stack<int> stack;
+    int item;
+    for(int it : all)
+      stack.push(it);
+
+    while(stack.size() > 0)
+    {
+      item = stack.top();
+      stack.pop();
+      for(int dst : list[item])
+      {
+        if(all.find(dst) == all.end())
+        {
+          stack.push(dst);
+          all.insert(dst);
+        }
+      }
+    }
+    return all;
+  }
 
   std::vector<std::pair<std::set<unsigned>, unsigned>>
   mh_complement::get_succ_track(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index)
@@ -518,6 +576,26 @@ namespace cola
       scc_states.insert(scc_info_.states_of(i).begin(), scc_info_.states_of(i).end());
     }
     std::set_intersection(all_succ.begin(), all_succ.end(), scc_states.begin(), scc_states.end(), std::back_inserter(succ_in_scc));
+
+    // simulation
+    if (decomp_options_.iw_sim)
+    {
+      // remove smaller states from S
+      std::set<unsigned> new_S(succ_in_scc.begin(), succ_in_scc.end());
+      for (auto pr : dir_sim_)
+      {
+        if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
+        {
+          // reachability check
+          if (reachable_vector_[pr.first].find(pr.second) != reachable_vector_[pr.first].end() and reachable_vector_[pr.second].find(pr.first) == reachable_vector_[pr.second].end())
+          {
+            // both states in S -> we can remove the smaller one from S
+            new_S.erase(pr.first);
+          }
+        }
+      }
+      succ_in_scc = std::vector<unsigned>(new_S.begin(), new_S.end());
+    }
 
     succ.push_back({std::set<unsigned>(succ_in_scc.begin(), succ_in_scc.end()), 0});
 
@@ -548,7 +626,30 @@ namespace cola
         std::set_intersection(succ_in_scc.begin(), succ_in_scc.end(), states_in_scc.begin(), states_in_scc.end(), std::inserter(inter2, inter2.begin()));
         new_break_set.insert(inter2.begin(), inter2.end());
       }
-    }    
+    }
+
+    // simulation
+    if (decomp_options_.iw_sim)
+    {
+      // remove smaller states from S
+      std::set<unsigned> new_S(succ_in_scc.begin(), succ_in_scc.end());
+      for (auto pr : dir_sim_)
+      {
+        if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
+        {
+          if (reachable_vector_[pr.first].find(pr.second) != reachable_vector_[pr.first].end() and reachable_vector_[pr.second].find(pr.first) == reachable_vector_[pr.second].end())
+          {
+            // both states in S -> we can remove the smaller one from S
+            new_S.erase(pr.first);
+
+            // remove the states also from new_break_set if present
+            if (new_break_set.find(pr.first) != new_break_set.end())
+              new_break_set.erase(pr.first);
+          }
+        }
+      }
+      succ_in_scc = new_S;
+    }
 
     succ.push_back({{std::set<unsigned>(succ_in_scc.begin(), succ_in_scc.end()), new_break_set}, 0});
 
@@ -602,6 +703,29 @@ namespace cola
           new_break_set.insert(inter2.begin(), inter2.end());
         }
       }
+
+      // simulation
+      if (decomp_options_.iw_sim)
+      {
+        // remove smaller states from S
+        std::set<unsigned> new_S(succ_in_scc.begin(), succ_in_scc.end());
+        for (auto pr : dir_sim_)
+        {
+          if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
+          {
+            if (reachable_vector_[pr.first].find(pr.second) != reachable_vector_[pr.first].end() and reachable_vector_[pr.second].find(pr.first) == reachable_vector_[pr.second].end())
+            {
+              // both states in S -> we can remove the smaller one from S
+              new_S.erase(pr.first);
+
+              // remove the states also from new_break_set if present
+              if (new_break_set.find(pr.first) != new_break_set.end())
+                new_break_set.erase(pr.first);
+            }
+          }
+        }
+        succ_in_scc = new_S;
+      }
       
       succ_at.push_back({{std::set<unsigned>(succ_in_scc.begin(), succ_in_scc.end()), new_break_set}, 0});
     }
@@ -636,6 +760,9 @@ namespace cola
   private:
     // The source automaton.
     const spot::const_twa_graph_ptr aut_;
+
+    // Direct simulation on source automaton.
+    std::vector<std::pair<unsigned, unsigned>> dir_sim_;
 
     // SCCs information of the source automaton.
     spot::scc_info &si_;
@@ -791,52 +918,6 @@ namespace cola
           it1 = nodes.erase(old_it1);
         }
       }
-    }
-
-    void merge_redundant_states(complement_mstate &ms, std::vector<state_rank> &nodes, bool nondet)
-    {
-      // auto it1 = nodes.begin();
-      // while (it1 != nodes.end())
-      // {
-      //   auto old_it1 = it1++;
-      //   for (auto it2 = nodes.begin(); it2 != nodes.end(); ++it2)
-      //   {
-      //     if (old_it1 == it2)
-      //       continue;
-      //     unsigned i = old_it1->first;
-      //     unsigned j = it2->first;
-      //     if (!(simulator_.simulate(j, i) || delayed_simulator_.simulate(j, i)))
-      //     {
-      //       continue;
-      //     }
-      //     int brace_i = old_it1->second;
-      //     int brace_j = it2->second;
-      //     bool remove = false;
-      //     if (nondet)
-      //     {
-      //       // need to compare there nesting pattern
-      //       unsigned scc_i = si_.scc_of(i);
-      //       int scc_index = get_nondetscc_index(scc_i);
-      //       std::vector<int> &braces = ms.nondetscc_breaces_[scc_index];
-      //       // std::cout << "State " << i << " brace: " << brace_i << std::endl;
-      //       // std::cout << "State " << j << " brace: " << brace_j << std::endl;
-      //       //print_pattern_vec(braces, braces.size());
-      //       if (compare_braces(braces, brace_j, brace_i))
-      //       {
-      //         remove = true;
-      //       }
-      //     }
-      //     else if (brace_j < brace_i)
-      //     {
-      //       remove = true;
-      //     }
-      //     if (remove)
-      //     {
-      //       it1 = nodes.erase(old_it1);
-      //       break;
-      //     }
-      //   }
-      // }
     }
 
     // remove a state i if it is simulated by a state j
@@ -1645,7 +1726,7 @@ namespace cola
         }
       }
 
-      // std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() << std::endl << std::endl; 
+      std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() << std::endl << std::endl; 
     }
 
     unsigned
@@ -1662,7 +1743,39 @@ namespace cola
 
     spot::twa_graph_ptr
     run()
-    {
+    { 
+      if (decomp_options_.iw_sim)
+      {
+        // compute simulation
+        std::vector<bdd> implications;
+        auto aut_tmp = aut_;
+        spot::simulation(aut_, &implications, -1);
+        
+        // get vector of simulated states
+        std::vector<std::vector<char>> implies(
+            implications.size(),
+            std::vector<char>(implications.size(), 0));
+        {
+          for (unsigned i = 0; i != implications.size(); ++i)
+          {
+            if (!si_.reachable_state(i))
+              continue;
+            unsigned scc_of_i = si_.scc_of(i);
+            for (unsigned j = 0; j != implications.size(); ++j)
+            {
+              //reachable states
+              if (!si_.reachable_state(j))
+                continue;
+              // j simulates i and j cannot reach i
+              bool i_implies_j = bdd_implies(implications[i], implications[j]);
+              if (i_implies_j)
+                dir_sim_.push_back({i, j});
+            }
+          }
+        }
+      }
+
+
       if (show_names_)
       {
         names_ = new std::vector<std::string>();
@@ -1684,8 +1797,8 @@ namespace cola
       else 
         res_->set_generalized_buchi(1);
 
-      // spot::print_hoa(std::cerr, aut_);
-      // std::cerr << std::endl << std::endl;
+      spot::print_hoa(std::cerr, aut_);
+      std::cerr << std::endl << std::endl;
 
       // initial macrostate
       auto scc_info = get_scc_info();
@@ -1812,7 +1925,12 @@ namespace cola
 
       all_states.push_back(init_state);
 
-      mh_complement mh(aut_, scc_info, scc_types_);
+      mh_complement mh(aut_, scc_info, scc_types_, decomp_options_, dir_sim_);
+      if (decomp_options_.iw_sim)
+      {
+        mh.get_reachable_vector();
+      }
+
       bool sink_state = false;
 
       while (!todo_.empty())

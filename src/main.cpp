@@ -97,6 +97,12 @@ Optimizations:
     --unambiguous         Check whether the input is unambiguous and use this fact in determinization
     --rerank              Rearrange the labelling for NAC-states
 
+Decomposition-based complementation:
+    --merge-iwa           Merge all IWA SCCs
+    --merge-det           Merge all deterministic SCCs
+    --tgba                Outputs a TGBA with two colours
+    --iw-sim              Simulation on IWA SCCs
+
 Pre- and Post-processing:
     --preprocess=[0|1|2|3]       Level for simplifying the input automaton (default=1)
     --postprocess-det[=0|1|2|3]  Level for simplifying the output of the determinization (default=1)
@@ -474,6 +480,10 @@ int main(int argc, char *argv[])
     else if (arg == "--tgba")
     {
       decomp_options.tgba = true;
+    }
+    else if (arg == "--iw-sim")
+    {
+      decomp_options.iw_sim = true;
     }
     else if (arg == "-f")
     {

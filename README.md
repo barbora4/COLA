@@ -52,4 +52,6 @@ Complementation using decomposition: ```./cola --algo=comp [options] filename```
 Options:
 * ```--merge-iwa``` - merge all IWA SCCs
 * ```--merge-det``` - merge all deterministic SCCs
-* ```--verbose=1``` - output state names for debugging
+* ```--verbose=1``` - outputs state names for debugging
+* ```--tgba``` - outputs a TGBA with two colours
+* ```--iw-sim``` - simulation on IWA SCCs
