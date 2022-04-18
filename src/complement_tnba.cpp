@@ -20,6 +20,7 @@
 #include "simulation.hpp"
 #include "types.hpp"
 //#include "struct.hpp"
+#include "decomposer.hpp"
 
 #include <deque>
 #include <map>
@@ -30,6 +31,7 @@
 #include <spot/twaalgos/isdet.hh>
 #include <spot/twaalgos/sccinfo.hh>
 #include <spot/twaalgos/isunamb.hh>
+#include <spot/twaalgos/product.hh>
 #include <spot/twa/acc.hh>
 #include <spot/twaalgos/degen.hh>
 #include <spot/twaalgos/simulation.hh>
@@ -1726,7 +1728,7 @@ namespace cola
         }
       }
 
-      std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() << std::endl << std::endl; 
+      // std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() << std::endl << std::endl; 
     }
 
     unsigned
@@ -1797,8 +1799,8 @@ namespace cola
       else 
         res_->set_generalized_buchi(1);
 
-      spot::print_hoa(std::cerr, aut_);
-      std::cerr << std::endl << std::endl;
+      // spot::print_hoa(std::cerr, aut_);
+      // std::cerr << std::endl << std::endl;
 
       // initial macrostate
       auto scc_info = get_scc_info();
@@ -1932,6 +1934,7 @@ namespace cola
       }
 
       bool sink_state = false;
+      bool is_empty = aut_->is_empty();
 
       while (!todo_.empty())
       { 
@@ -1941,7 +1944,7 @@ namespace cola
         // std::cerr << std::endl << "State: " << get_name(ms) << std::endl;
         active_index = ms.active_index_;
 
-        if (active_index >= 0 and is_weakscc(scc_types_, active_index) and (not is_accepting_weakscc(scc_types_, active_index)))
+        if (active_index >= 0 and is_weakscc(scc_types_, active_index) and (not is_accepting_weakscc(scc_types_, active_index)) and not is_empty)
         {
           ms.active_index_ = (ms.active_index_ + 1) % si_.scc_count();
           todo_.emplace_back(ms, top.second);
@@ -2395,11 +2398,11 @@ namespace cola
   };
 
   spot::twa_graph_ptr
-  complement_tnba(const spot::const_twa_graph_ptr &aut, spot::option_map &om, compl_decomp_options decomp_options)
+  complement_tnba(const spot::twa_graph_ptr &aut, spot::option_map &om, compl_decomp_options decomp_options)
   {
     const int trans_pruning = om.get(NUM_TRANS_PRUNING);
     // now we compute the simulator
-    spot::const_twa_graph_ptr aut_reduced;
+    spot::twa_graph_ptr aut_reduced;
     std::vector<bdd> implications;
     spot::twa_graph_ptr aut_tmp = nullptr;
     if (om.get(USE_SIMULATION) > 0)
@@ -2414,7 +2417,42 @@ namespace cola
       aut_reduced = aut;
     spot::scc_info scc(aut_reduced, spot::scc_info_options::ALL);
 
-    auto comp = cola::tnba_complement(aut_reduced, scc, om, implications, decomp_options);
+    if (decomp_options.scc_compl)
+    {
+      // decompose source automaton
+      cola::decomposer decomp(aut_reduced, om);
+      auto decomposed = decomp.run(true);
+
+      std::vector<spot::twa_graph_ptr> part_res;
+      for (auto aut : decomposed)
+      {
+        // complement each automaton
+        spot::scc_info part_scc(aut, spot::scc_info_options::ALL);
+        auto comp = cola::tnba_complement(aut, part_scc, om, implications, decomp_options);
+        part_res.push_back(comp.run());
+      }
+
+      // intersection of all complements
+      spot::twa_graph_ptr result;
+      bool first = true;
+      for (auto aut : part_res)
+      {
+        if (first)
+        {
+          result = aut;
+          first = false;
+          continue;
+        }
+        result = spot::product(result, aut);
+      }
+
+      return result;  
+    }
+
+    spot::const_twa_graph_ptr aut_to_compl;
+    aut_to_compl = aut_reduced;
+
+    auto comp = cola::tnba_complement(aut_to_compl, scc, om, implications, decomp_options);
     return comp.run();
   }
 }

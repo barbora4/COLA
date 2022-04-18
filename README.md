@@ -55,3 +55,4 @@ Options:
 * ```--verbose=1``` - outputs state names for debugging
 * ```--tgba``` - outputs a TGBA with two colours
 * ```--iw-sim``` - simulation on IWA SCCs
+* ```--scc-compl``` - complementation for each SCC separately

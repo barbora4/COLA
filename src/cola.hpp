@@ -68,6 +68,7 @@ struct compl_decomp_options
   bool merge_det = false;
   bool tgba = false;
   bool iw_sim = false;
+  bool scc_compl = false;
 };
 
 namespace cola
@@ -103,7 +104,7 @@ namespace cola
   /// The automaton \a aut should be an elevator automaton for now.
   /// Output a generalized Buchi automaton
   spot::twa_graph_ptr
-  complement_tnba(const spot::const_twa_graph_ptr &aut, spot::option_map &om, compl_decomp_options decomp_options);
+  complement_tnba(const spot::twa_graph_ptr &aut, spot::option_map &om, compl_decomp_options decomp_options);
 
 
   spot::twa_graph_ptr

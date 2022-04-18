@@ -27,7 +27,7 @@ namespace cola
 {
 
 std::vector<spot::twa_graph_ptr>
-decomposer::run()
+decomposer::run(bool nonacc_pred)
 {
     std::vector<spot::twa_graph_ptr> result;
     spot::scc_info si(nba_, spot::scc_info_options::ALL);
@@ -59,7 +59,7 @@ decomposer::run()
         
         std::set<unsigned> sccs;
         sccs.insert(scc_i);
-        spot::twa_graph_ptr aut = make_twa_with_scc(si, sccs, reach_sccs);
+        spot::twa_graph_ptr aut = make_twa_with_scc(si, sccs, reach_sccs, nonacc_pred);
         result.push_back(aut);
 
         -- num_nbas_;
@@ -78,14 +78,14 @@ decomposer::run()
     }
     if (! remaining_sccs.empty())
     {
-        spot::twa_graph_ptr aut = make_twa_with_scc(si, remaining_sccs, reach_sccs);
+        spot::twa_graph_ptr aut = make_twa_with_scc(si, remaining_sccs, reach_sccs, nonacc_pred);
         result.push_back(aut);
     }
     return result;
 }
 
 spot::twa_graph_ptr
-decomposer::make_twa_with_scc(spot::scc_info& si, std::set<unsigned> sccs, std::vector<bool>& reach_sccs)
+decomposer::make_twa_with_scc(spot::scc_info& si, std::set<unsigned> sccs, std::vector<bool>& reach_sccs, bool nonacc_pred)
 {
     assert(! sccs.empty());
 
@@ -129,7 +129,16 @@ decomposer::make_twa_with_scc(spot::scc_info& si, std::set<unsigned> sccs, std::
       if (is_good_scc(scc_src) && is_good_scc(scc_dst))
       {
         //   if(sccs.find(scc_src) != sccs.end() && sccs.find(scc_dst) != sccs.end())
-            res->new_edge(t.src, t.dst, t.cond, t.acc);
+            
+            if (not nonacc_pred)
+                res->new_edge(t.src, t.dst, t.cond, t.acc);
+            else 
+            {
+                if (sccs.find(scc_src) != sccs.end() and sccs.find(scc_dst) != sccs.end())
+                    res->new_edge(t.src, t.dst, t.cond, t.acc);
+                else
+                    res->new_edge(t.src, t.dst, t.cond);
+            }
       }
     }
     // names

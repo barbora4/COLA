@@ -102,6 +102,7 @@ Decomposition-based complementation:
     --merge-det           Merge all deterministic SCCs
     --tgba                Outputs a TGBA with two colours
     --iw-sim              Simulation on IWA SCCs
+    --scc-compl           Complementation for each SCC separately
 
 Pre- and Post-processing:
     --preprocess=[0|1|2|3]       Level for simplifying the input automaton (default=1)
@@ -485,6 +486,10 @@ int main(int argc, char *argv[])
     {
       decomp_options.iw_sim = true;
     }
+    else if (arg == "--scc-compl")
+    {
+      decomp_options.scc_compl = true;
+    }
     else if (arg == "-f")
     {
       if (argc < i + 1)
@@ -686,6 +691,9 @@ int main(int argc, char *argv[])
           preprocessor.set_level(spot::postprocessor::Medium);
         else if (preprocess == High)
           preprocessor.set_level(spot::postprocessor::High);
+
+        if (decomp_options.scc_compl)
+          preprocessor.set_type(spot::postprocessor::Buchi); 
         aut = preprocessor.run(aut);
       }
 
