@@ -37,7 +37,7 @@ namespace cola
         make_twa_with_scc(spot::scc_info& si, std::set<unsigned> sccs, std::vector<bool>& reach_sccs, bool nonacc_pred = false);
 
         public:
-        decomposer(spot::twa_graph_ptr &nba, spot::option_map& om)
+        decomposer(spot::twa_graph_ptr &nba, spot::option_map& om)  
         : nba_(nba), om_(om)
         {
             num_nbas_ = om.get(NUM_NBA_DECOMPOSED);
