@@ -2404,13 +2404,14 @@ namespace cola
       aut_reduced = aut_tmp;
     else
       aut_reduced = aut;
+    
     spot::scc_info scc(aut_reduced, spot::scc_info_options::ALL);
 
     if (decomp_options.scc_compl)
     {
       // decompose source automaton
       cola::decomposer decomp(aut_reduced, om);
-      auto decomposed = decomp.run(true);
+      auto decomposed = decomp.run(true, decomp_options.merge_iwa, decomp_options.merge_det);
 
       if (decomposed.size() > 0)
       {

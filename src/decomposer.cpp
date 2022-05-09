@@ -27,7 +27,7 @@ namespace cola
 {
 
 std::vector<spot::twa_graph_ptr>
-decomposer::run(bool nonacc_pred)
+decomposer::run(bool nonacc_pred, bool merge_iwa, bool merge_det)
 {
     std::vector<spot::twa_graph_ptr> result;
     spot::scc_info si(nba_, spot::scc_info_options::ALL);
@@ -45,13 +45,26 @@ decomposer::run(bool nonacc_pred)
     // first deal with SCCs with large numbers
     // SCC with more states gets priority to decompose
     std::priority_queue<std::pair<unsigned, unsigned>, std::vector<std::pair<unsigned, unsigned>>, pair_compare> scclist;
+    std::set<unsigned> iw_sccs;
+    std::set<unsigned> det_sccs;
+    auto scc_types = get_scc_types(si);
     for (unsigned sc = 0; sc < si.scc_count(); sc ++)
     {
+        if (is_accepting_weakscc(scc_types, sc))
+        {
+            iw_sccs.insert(sc);
+        } else if (is_accepting_detscc(scc_types, sc))
+        {
+            det_sccs.insert(sc);
+        }
+        
         // only care about accepting scc
         if (! si.is_accepting_scc(sc)) continue;
         scclist.push(std::make_pair(sc, si.states_of(sc).size()));
     }
     
+    bool iwa_done = false;
+    bool det_done = false;
     while(scclist.size() > 0)
     {
         unsigned scc_i = scclist.top().first;
@@ -59,6 +72,27 @@ decomposer::run(bool nonacc_pred)
         
         std::set<unsigned> sccs;
         sccs.insert(scc_i);
+
+        if (merge_iwa and not iwa_done and is_accepting_weakscc(scc_types, scc_i))
+        {
+            sccs = iw_sccs;
+            iwa_done = true;
+        }
+        else if (merge_iwa and iwa_done and is_accepting_weakscc(scc_types, scc_i))
+        {
+            continue;
+        }
+
+        if (merge_det and not det_done and is_accepting_detscc(scc_types, scc_i))
+        {
+            sccs = det_sccs;
+            det_done = true;
+        }
+        else if (merge_det and det_done and is_accepting_detscc(scc_types, scc_i))
+        {
+            continue;
+        }
+
         spot::twa_graph_ptr aut = make_twa_with_scc(si, sccs, reach_sccs, nonacc_pred);
         result.push_back(aut);
 
@@ -69,6 +103,7 @@ decomposer::run(bool nonacc_pred)
             break;
         }
     }
+
     std::set<unsigned> remaining_sccs;
     while(scclist.size() > 0)
     {
@@ -78,14 +113,14 @@ decomposer::run(bool nonacc_pred)
     }
     if (! remaining_sccs.empty())
     {
-        spot::twa_graph_ptr aut = make_twa_with_scc(si, remaining_sccs, reach_sccs, nonacc_pred);
+        spot::twa_graph_ptr aut = make_twa_with_scc(si, remaining_sccs, reach_sccs, nonacc_pred, merge_iwa, merge_det);
         result.push_back(aut);
     }
     return result;
 }
 
 spot::twa_graph_ptr
-decomposer::make_twa_with_scc(spot::scc_info& si, std::set<unsigned> sccs, std::vector<bool>& reach_sccs, bool nonacc_pred)
+decomposer::make_twa_with_scc(spot::scc_info& si, std::set<unsigned> sccs, std::vector<bool>& reach_sccs, bool nonacc_pred, bool merge_iwa, bool merge_det)
 {
     assert(! sccs.empty());
 
