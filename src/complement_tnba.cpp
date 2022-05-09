@@ -2406,8 +2406,6 @@ namespace cola
       aut_reduced = aut;
     spot::scc_info scc(aut_reduced, spot::scc_info_options::ALL);
 
-    std::cerr << "SCC count: " << scc.scc_count() << std::endl;
-
     if (decomp_options.scc_compl)
     {
       // decompose source automaton

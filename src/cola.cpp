@@ -137,7 +137,7 @@ namespace cola
   std::vector<bool>
   find_scc_paths(const spot::scc_info &scc)
   {
-    unsigned scccount = scc.scc_count();
+    unsigned long scccount = scc.scc_count();
     std::vector<bool> res(scccount * scccount, 0);
     for (unsigned i = 0; i < scccount; ++i)
       {
