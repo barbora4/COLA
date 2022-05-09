@@ -2415,12 +2415,19 @@ namespace cola
       if (decomposed.size() > 0)
       {
         std::vector<spot::twa_graph_ptr> part_res;
+
+        spot::postprocessor p;
+
+
         for (auto aut : decomposed)
         {
           // complement each automaton
           spot::scc_info part_scc(aut, spot::scc_info_options::ALL);
           auto comp = cola::tnba_complement(aut, part_scc, om, implications, decomp_options);
-          part_res.push_back(comp.run());
+          auto dec_aut = comp.run();
+          // postprocessing for each automaton
+          p.set_level(spot::postprocessor::Low);
+          part_res.push_back(p.run(dec_aut)); 
         }
 
         // intersection of all complements
