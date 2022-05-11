@@ -508,11 +508,11 @@ namespace cola
     std::pair<std::vector<std::pair<std::set<unsigned>, unsigned>>, std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>> get_succ_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index, std::vector<unsigned> break_set);
 
     std::set<unsigned> get_all_successors(std::set<unsigned> current_states, bdd symbol);
-    void get_reachable_vector();
+    std::vector<std::set<int>>  get_reachable_vector();
     std::set<int> reachable_vertices(std::vector<std::vector<int>> list, std::set<int> from);
   };
 
-  void
+  std::vector<std::set<int>> 
   mh_complement::get_reachable_vector()
   {
     std::vector<std::set<int>> list_set(aut_->num_states());
@@ -537,6 +537,8 @@ namespace cola
       std::set<int> tmp({s});
       reachable_vector_[s] = reachable_vertices(list_vector, tmp);
     }
+
+    return reachable_vector_;
   }
 
   std::set<int>
@@ -1725,7 +1727,7 @@ namespace cola
         }
       }
 
-      // std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() << std::endl << std::endl;
+      std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() << std::endl << std::endl;
     }
 
     unsigned
@@ -1795,8 +1797,8 @@ namespace cola
       else
         res_->set_generalized_buchi(1);
 
-      // spot::print_hoa(std::cerr, aut_);
-      // std::cerr << std::endl << std::endl;
+      spot::print_hoa(std::cerr, aut_);
+      std::cerr << std::endl << std::endl;
 
       // initial macrostate
       auto scc_info = get_scc_info();
@@ -1924,9 +1926,11 @@ namespace cola
       all_states.push_back(init_state);
 
       mh_complement mh(aut_, scc_info, scc_types_, decomp_options_, dir_sim_);
-      if (decomp_options_.iw_sim)
+      std::vector<std::set<int>> reachable_vector;
+
+      if (decomp_options_.iw_sim or decomp_options_.det_sim)
       {
-        mh.get_reachable_vector();
+        reachable_vector = mh.get_reachable_vector();
       }
 
       bool sink_state = false;
@@ -2358,6 +2362,49 @@ namespace cola
               new_succ[i].set_iw_sccs(iw_succ);
 
               new_succ[i].curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
+
+              // det sim
+              if (decomp_options_.merge_det and decomp_options_.det_sim)
+              {
+                // remove smaller states from S
+
+                // all reachable states
+                std::set<unsigned> new_S;
+                for (auto item : new_succ[i].acc_detsccs_)
+                {
+                  new_S.insert(item.first.begin(), item.first.end());
+                  new_S.insert(item.second.begin(), item.second.end());
+                }
+                
+                for (auto pr : dir_sim_)
+                {
+                  if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
+                  {
+                    // reachability check
+                    if (reachable_vector[pr.first].find(pr.second) != reachable_vector[pr.first].end() and reachable_vector[pr.second].find(pr.first) == reachable_vector[pr.second].end())
+                    {
+                      // both states in S -> we can remove the smaller one from S
+                      new_S.erase(pr.first);
+                    }
+                  }
+                }
+
+                // erase state if not in new_S
+                for (auto &item : new_succ[i].acc_detsccs_)
+                {
+                  std::vector<unsigned> result;
+                  std::set_intersection(item.first.begin(), item.first.end(), new_S.begin(), new_S.end(), std::back_inserter(result)); 
+                  item.first = result;
+
+                  std::vector<unsigned> result2;
+                  std::set_intersection(item.second.begin(), item.second.end(), new_S.begin(), new_S.end(), std::back_inserter(result2)); 
+                  item.first = result2;
+                }
+                // erase state from B if not in new_S
+                std::vector<unsigned> result;
+                std::set_intersection(new_succ[i].det_break_set_.begin(), new_succ[i].det_break_set_.end(), new_S.begin(), new_S.end(), std::back_inserter(result)); 
+                new_succ[i].det_break_set_ = result;
+              }
 
               // std::cerr << "New succ: " << get_name(new_succ[i]) << std::endl;
               if (std::find(all_states.begin(), all_states.end(), new_succ[i]) == all_states.end())

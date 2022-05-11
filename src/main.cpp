@@ -486,6 +486,10 @@ int main(int argc, char *argv[])
     {
       decomp_options.iw_sim = true;
     }
+    else if (arg == "--det-sim")
+    {
+      decomp_options.det_sim = true;
+    }
     else if (arg == "--scc-compl")
     {
       decomp_options.scc_compl = true;
