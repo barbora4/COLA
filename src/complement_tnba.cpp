@@ -1951,6 +1951,11 @@ namespace cola
           continue;
         }
 
+        if (get_name(ms) == "({0, 4},{}{},{4}+{},{},{4},0)")
+        {
+          std::cerr << get_name(ms) << std::endl;
+        }
+
         // reachable states
         std::set<unsigned> reachable = std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end());
 
@@ -2201,6 +2206,7 @@ namespace cola
                       new_succ[0].set_active_index(-2);
                       new_succ[1].set_active_index(-2);
                     }
+
                   }
                 }
               }
@@ -2327,6 +2333,7 @@ namespace cola
 
           for (unsigned i = 0; i < new_succ.size(); i++)
           {
+            
             if (new_succ[i].active_index_ != -2)
             {
               active_type = true;
@@ -2363,8 +2370,13 @@ namespace cola
 
               new_succ[i].curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
 
+              if (is_weakscc(scc_types_, new_succ[i].active_index_) and not decomp_options_.tgba)
+              {
+                new_succ[i].det_break_set_.clear();
+              }
+
               // det sim
-              if (decomp_options_.merge_det and decomp_options_.det_sim)
+              if (is_accepting_detscc(scc_types_, new_succ[i].active_index_) and decomp_options_.merge_det and decomp_options_.det_sim)
               {
                 // remove smaller states from S
 
@@ -2375,7 +2387,7 @@ namespace cola
                   new_S.insert(item.first.begin(), item.first.end());
                   new_S.insert(item.second.begin(), item.second.end());
                 }
-                
+              
                 for (auto pr : dir_sim_)
                 {
                   if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
@@ -2398,7 +2410,7 @@ namespace cola
 
                   std::vector<unsigned> result2;
                   std::set_intersection(item.second.begin(), item.second.end(), new_S.begin(), new_S.end(), std::back_inserter(result2)); 
-                  item.first = result2;
+                  item.second = result2;
                 }
                 // erase state from B if not in new_S
                 std::vector<unsigned> result;
@@ -2421,6 +2433,12 @@ namespace cola
 
               if (decomp_options_.tgba and ms.iw_break_set_.size() == 0)
                 res_->new_edge(top.second, p.first->second, letter, {1});
+
+              if (get_name(ms) == "({0, 4},{}{},{4}+{},{},{4},0)")
+              {
+                std::cerr << get_name(ms) << std::endl;
+                std::cerr << get_name(new_succ[0]) << ", " << get_name(new_succ[1]) << std::endl << std::endl;
+              }
             }
           }
         }
