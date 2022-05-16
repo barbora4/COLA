@@ -1727,7 +1727,7 @@ namespace cola
         }
       }
 
-      std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() << std::endl << std::endl;
+      // std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() << std::endl << std::endl;
     }
 
     unsigned
@@ -1797,8 +1797,8 @@ namespace cola
       else
         res_->set_generalized_buchi(1);
 
-      spot::print_hoa(std::cerr, aut_);
-      std::cerr << std::endl << std::endl;
+      // spot::print_hoa(std::cerr, aut_);
+      // std::cerr << std::endl << std::endl;
 
       // initial macrostate
       auto scc_info = get_scc_info();
@@ -2492,7 +2492,10 @@ namespace cola
           auto comp = cola::tnba_complement(aut, part_scc, om, implications, decomp_options);
           auto dec_aut = comp.run();
           // postprocessing for each automaton
-          p.set_level(spot::postprocessor::Low);
+          if (decomp_options.scc_compl_high)
+            p.set_level(spot::postprocessor::High);
+          else
+            p.set_level(spot::postprocessor::Low);
           part_res.push_back(p.run(dec_aut)); 
         }
 

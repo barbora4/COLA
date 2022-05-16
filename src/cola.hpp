@@ -70,6 +70,7 @@ struct compl_decomp_options
   bool iw_sim = false;
   bool det_sim = false;
   bool scc_compl = false;
+  bool scc_compl_high = false;
 };
 
 namespace cola

@@ -103,6 +103,7 @@ Decomposition-based complementation:
     --tgba                Outputs a TGBA with two colours
     --iw-sim              Simulation on IWA SCCs
     --scc-compl           Complementation for each SCC separately
+    --scc-high            SCC compl with high postprocessing before intersection
 
 Pre- and Post-processing:
     --preprocess=[0|1|2|3]       Level for simplifying the input automaton (default=1)
@@ -493,6 +494,10 @@ int main(int argc, char *argv[])
     else if (arg == "--scc-compl")
     {
       decomp_options.scc_compl = true;
+    }
+    else if (arg == "--scc-high")
+    {
+      decomp_options.scc_compl_high = true;
     }
     else if (arg == "-f")
     {
