@@ -102,6 +102,7 @@ Decomposition-based complementation:
     --merge-det           Merge all deterministic SCCs
     --tgba                Outputs a TGBA with two colours
     --iw-sim              Simulation on IWA SCCs
+    --det-sim             Simulation on DET SCCs
     --scc-compl           Complementation for each SCC separately
     --scc-high            SCC compl with high postprocessing before intersection
 
