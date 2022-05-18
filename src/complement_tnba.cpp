@@ -1727,7 +1727,10 @@ namespace cola
         }
       }
 
-      // std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() << std::endl << std::endl;
+      // std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() << ", N: " << acc_nondetsccs_.size() << std::endl << std::endl;
+
+      if (acc_nondetsccs_.size() > 0)
+        throw std::runtime_error("nondeterministic accepting sccs not supported yet");
     }
 
     unsigned
@@ -1949,11 +1952,6 @@ namespace cola
           ms.active_index_ = (ms.active_index_ + 1) % si_.scc_count();
           todo_.emplace_back(ms, top.second);
           continue;
-        }
-
-        if (get_name(ms) == "({0, 4},{}{},{4}+{},{},{4},0)")
-        {
-          std::cerr << get_name(ms) << std::endl;
         }
 
         // reachable states
@@ -2333,7 +2331,6 @@ namespace cola
 
           for (unsigned i = 0; i < new_succ.size(); i++)
           {
-            
             if (new_succ[i].active_index_ != -2)
             {
               active_type = true;
@@ -2341,6 +2338,7 @@ namespace cola
                 active_type = false;
               if (decomp_options_.tgba and ms.det_break_set_.size() == 0)
                 active_type = false;
+
               if (not active_type)
               {
                 new_succ[i].set_active_index((indices[(orig_index + 1) % indices.size()]));
@@ -2434,11 +2432,6 @@ namespace cola
               if (decomp_options_.tgba and ms.iw_break_set_.size() == 0)
                 res_->new_edge(top.second, p.first->second, letter, {1});
 
-              if (get_name(ms) == "({0, 4},{}{},{4}+{},{},{4},0)")
-              {
-                std::cerr << get_name(ms) << std::endl;
-                std::cerr << get_name(new_succ[0]) << ", " << get_name(new_succ[1]) << std::endl << std::endl;
-              }
             }
           }
         }
