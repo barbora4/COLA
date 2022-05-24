@@ -2480,15 +2480,15 @@ namespace cola
 
         for (auto aut : decomposed)
         {
-          // complement each automaton
-          spot::scc_info part_scc(aut, spot::scc_info_options::ALL);
-          auto comp = cola::tnba_complement(aut, part_scc, om, implications, decomp_options);
-          auto dec_aut = comp.run();
-          // postprocessing for each automaton
-          if (decomp_options.scc_compl_high)
+           if (decomp_options.scc_compl_high)
             p.set_level(spot::postprocessor::High);
           else
             p.set_level(spot::postprocessor::Low);
+          // complement each automaton
+          spot::scc_info part_scc(p.run(aut), spot::scc_info_options::ALL);
+          auto comp = cola::tnba_complement(aut, part_scc, om, implications, decomp_options);
+          auto dec_aut = comp.run();
+          // postprocessing for each automaton
           part_res.push_back(p.run(dec_aut)); 
         }
 
