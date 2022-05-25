@@ -1897,7 +1897,15 @@ namespace cola
         }
       }
 
-      init_state.set_iw_sccs(iw_sccs);
+      if ((not decomp_options_.merge_iwa) or (not (is_weakscc(scc_types_, active_index) and not is_accepting_weakscc(scc_types_, active_index))))
+        init_state.set_iw_sccs(iw_sccs);
+      else
+      {
+        std::vector<std::vector<unsigned>> tmp;
+        tmp.push_back(std::vector<unsigned>()); 
+        init_state.set_iw_sccs(tmp);
+      }
+      
       init_state.set_acc_detsccs(acc_detsccs);
       auto acc_detsccs_orig = acc_detsccs;
       init_state.curr_reachable_.push_back(orig_init);
@@ -1905,7 +1913,10 @@ namespace cola
       // get break set for active scc
       if (is_weakscc(scc_types_, active_index) and active_index == scc_info.scc_of(orig_init))
       {
-        init_state.set_iw_break_set(std::vector<unsigned>(1, orig_init));
+        if (not decomp_options_.merge_iwa or is_accepting_weakscc(scc_types_, active_index))
+          init_state.set_iw_break_set(std::vector<unsigned>(1, orig_init));
+        else  
+          init_state.set_iw_break_set(std::vector<unsigned>());
         init_state.det_break_set_ = std::vector<unsigned>();
       }
       else if (is_accepting_detscc(scc_types_, active_index) and active_index == scc_info.scc_of(orig_init))
@@ -2485,8 +2496,9 @@ namespace cola
           else
             p.set_level(spot::postprocessor::Low);
           // complement each automaton
-          spot::scc_info part_scc(p.run(aut), spot::scc_info_options::ALL);
-          auto comp = cola::tnba_complement(aut, part_scc, om, implications, decomp_options);
+          auto aut_preprocessed = p.run(aut);
+          spot::scc_info part_scc(aut_preprocessed, spot::scc_info_options::ALL);
+          auto comp = cola::tnba_complement(aut_preprocessed, part_scc, om, implications, decomp_options);
           auto dec_aut = comp.run();
           // postprocessing for each automaton
           part_res.push_back(p.run(dec_aut)); 
