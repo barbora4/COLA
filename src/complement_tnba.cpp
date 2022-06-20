@@ -730,7 +730,21 @@ namespace cola
         succ_in_scc = new_S;
       }
 
-      succ_at.push_back({{std::set<unsigned>(succ_in_scc.begin(), succ_in_scc.end()), new_break_set}, 0});
+
+      // no state with empty break set (tba) 
+      if (new_break_set.size() == 0)
+      {
+        // empty break set -> return TT and switch to other scc
+        succ_tt = get_succ_track(reachable, reach_in_scc, symbol, scc_index);
+        for (auto &succ : succ_tt)
+        {
+          succ.second = 1;
+        }
+      }
+      else
+      {
+        succ_at.push_back({{std::set<unsigned>(succ_in_scc.begin(), succ_in_scc.end()), new_break_set}, 0});
+      }
     }
 
     return {succ_tt, succ_at};
