@@ -590,7 +590,7 @@ namespace cola
         if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
         {
           // reachability check
-          if (reachable_vector_[pr.first].find(pr.second) != reachable_vector_[pr.first].end() and reachable_vector_[pr.second].find(pr.first) == reachable_vector_[pr.second].end())
+          if (reachable_vector_[pr.second].find(pr.first) == reachable_vector_[pr.second].end())
           {
             // both states in S -> we can remove the smaller one from S
             new_S.erase(pr.first);
@@ -640,7 +640,7 @@ namespace cola
       {
         if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
         {
-          if (reachable_vector_[pr.first].find(pr.second) != reachable_vector_[pr.first].end() and reachable_vector_[pr.second].find(pr.first) == reachable_vector_[pr.second].end())
+          if (reachable_vector_[pr.second].find(pr.first) == reachable_vector_[pr.second].end())
           {
             // both states in S -> we can remove the smaller one from S
             new_S.erase(pr.first);
@@ -716,7 +716,7 @@ namespace cola
         {
           if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
           {
-            if (reachable_vector_[pr.first].find(pr.second) != reachable_vector_[pr.first].end() and reachable_vector_[pr.second].find(pr.first) == reachable_vector_[pr.second].end())
+            if (reachable_vector_[pr.second].find(pr.first) == reachable_vector_[pr.second].end()) 
             {
               // both states in S -> we can remove the smaller one from S
               new_S.erase(pr.first);
