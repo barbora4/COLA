@@ -542,6 +542,7 @@ int main(int argc, char *argv[])
     else if (arg.find("--verbose=") != std::string::npos)
     {
       om.set(VERBOSE_LEVEL, parse_int(arg));
+      decomp_options.dir_sim = false;
     }
     else if (arg.find("--scc-mem-limit=") != std::string::npos)
     {

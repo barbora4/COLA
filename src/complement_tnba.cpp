@@ -505,7 +505,7 @@ namespace cola
 
     std::vector<std::pair<std::set<unsigned>, unsigned>> get_succ_track(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index);
     std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index);
-    std::pair<std::vector<std::pair<std::set<unsigned>, unsigned>>, std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>> get_succ_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index, std::vector<unsigned> break_set);
+    std::pair<std::vector<std::pair<std::set<unsigned>, unsigned>>, std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>> get_succ_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index, std::vector<unsigned> break_set, bool one_scc=false);
 
     std::set<unsigned> get_all_successors(std::set<unsigned> current_states, bdd symbol);
     std::vector<std::set<int>>  get_reachable_vector();
@@ -660,7 +660,7 @@ namespace cola
   }
 
   std::pair<std::vector<std::pair<std::set<unsigned>, unsigned>>, std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>>
-  mh_complement::get_succ_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index, std::vector<unsigned> break_set)
+  mh_complement::get_succ_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index, std::vector<unsigned> break_set, bool one_scc)
   {
     std::vector<std::pair<std::set<unsigned>, unsigned>> succ_tt;
     std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> succ_at;
@@ -735,10 +735,21 @@ namespace cola
       if (new_break_set.size() == 0)
       {
         // empty break set -> return TT and switch to other scc
-        succ_tt = get_succ_track(reachable, reach_in_scc, symbol, scc_index);
-        for (auto &succ : succ_tt)
+        if (one_scc)
         {
-          succ.second = 1;
+          succ_at = get_succ_track_to_active(reachable, reach_in_scc, symbol, scc_index);
+          for (auto &succ : succ_at)
+          {
+            succ.second = 1;
+          }
+        }
+        else
+        {
+          succ_tt = get_succ_track(reachable, reach_in_scc, symbol, scc_index);
+          for (auto &succ : succ_tt)
+          {
+            succ.second = 1;
+          }
         }
       }
       else
@@ -1862,6 +1873,8 @@ namespace cola
       std::vector<std::vector<unsigned>> iw_sccs;
       std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_detsccs;
 
+      bool acc_edge = false;
+
       // weak SCCs
       for (unsigned index : weaksccs_)
       {
@@ -2246,11 +2259,13 @@ namespace cola
               // active component
               if (is_weakscc(scc_types_, index[0]))
               {
+                acc_edge = false;
                 iwa_done = true;
                 // getSuccActive
                 if ((not decomp_options_.tgba and ((not decomp_options_.merge_iwa and this->weaksccs_.size() + this->acc_detsccs_.size() > 1) or this->acc_detsccs_.size() > 0 or not ms.iw_break_set_.empty())) or not ms.iw_break_set_.empty())
                 {
-                  auto succ_active = mh.get_succ_active(reachable, reach_track, letter, index, ms.iw_break_set_);
+                  auto succ_active = mh.get_succ_active(reachable, reach_track, letter, index, ms.iw_break_set_, decomp_options_.merge_iwa and this->acc_detsccs_.size() == 0);
+
                   for (auto succ_tt : succ_active.first)
                   {
                     if (decomp_options_.merge_iwa)
@@ -2267,6 +2282,10 @@ namespace cola
                     for (unsigned i = 0; i < new_succ.size(); i++)
                     {
                       new_succ[i].set_iw_break_set(std::vector<unsigned>(succ_at.first.second.begin(), succ_at.first.second.end()));
+                    }
+                    if (decomp_options_.merge_iwa and this->acc_detsccs_.size() == 0 and succ_at.second == 1)
+                    {
+                      acc_edge = true;
                     }
                   }
 
@@ -2449,7 +2468,7 @@ namespace cola
               }
 
               auto p = rank2n_.emplace(new_succ[i], 0);
-              if (active_type)
+              if (active_type and not acc_edge)
                 res_->new_edge(top.second, p.first->second, letter);
               else
                 res_->new_edge(top.second, p.first->second, letter, {0});
@@ -2464,6 +2483,13 @@ namespace cola
 
       // spot::print_hoa(std::cerr, res_);
       // std::cerr << std::endl;
+
+      // direct simulation: merge states
+      // if (decomp_options_.dir_sim)
+      // {
+      //   std::vector<bdd> impl;
+      //   res_ = spot::simulation(res_, &impl, -1);
+      // }
 
       return res_;
     }
