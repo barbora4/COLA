@@ -1977,7 +1977,7 @@ namespace cola
         if (ms.active_index_ == -1)
           continue;
 
-        std::cerr << std::endl << "State: " << get_name(ms) << std::endl;
+        // std::cerr << std::endl << "State: " << get_name(ms) << std::endl;
         active_index = ms.active_index_;
 
         if (active_index >= 0 and is_weakscc(scc_types_, active_index) and (not is_accepting_weakscc(scc_types_, active_index)) and not is_empty)
@@ -2027,7 +2027,7 @@ namespace cola
         {
           bdd letter = bdd_satoneset(all, msupport, bddfalse);
           all -= letter;
-          std::cerr << "Current symbol: " << letter << std::endl;
+          // std::cerr << "Current symbol: " << letter << std::endl;
 
           std::set<unsigned> all_succ = mh.get_all_successors(reachable, letter);
 
@@ -2455,7 +2455,7 @@ namespace cola
                 new_succ[i].det_break_set_ = result;
               }
 
-              std::cerr << "New succ: " << get_name(new_succ[i]) << std::endl;
+              // std::cerr << "New succ: " << get_name(new_succ[i]) << std::endl;
               if (std::find(all_states.begin(), all_states.end(), new_succ[i]) == all_states.end())
               {
                 all_states.push_back(new_succ[i]);
