@@ -749,6 +749,8 @@ int main(int argc, char *argv[])
             std::cout << "Done for determinizing the input automaton in " << 1000.0 * (c_end - c_start) / CLOCKS_PER_SEC << " ms..." << std::endl;
           }
           aut = res;
+          // spot::print_hoa(std::cout, aut); 
+          // std::cout << std::endl;
         }
       }
       if (complement && !determinize)

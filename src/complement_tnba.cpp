@@ -686,26 +686,16 @@ namespace cola
       }
       std::set_intersection(all_succ.begin(), all_succ.end(), scc_states.begin(), scc_states.end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
 
-      // std::set<unsigned> break_set_succ = this->get_all_successors(std::set<unsigned>(break_set.begin(), break_set.end()), symbol);
-      // std::set<unsigned> inter;
-      // std::set_intersection(break_set_succ.begin(), break_set_succ.end(), succ_in_scc.begin(), succ_in_scc.end(), std::inserter(inter, inter.begin()));
-
       std::set<unsigned> new_break_set;
+      std::set<unsigned> states_in_sccs;
+      std::set<unsigned> break_set_succ = this->get_all_successors(std::set<unsigned>(break_set.begin(), break_set.end()), symbol);
       for (auto i : scc_index)
       {
-        std::set<unsigned> states_in_scc(scc_info_.states_of(i).begin(), scc_info_.states_of(i).end());
-        std::set<unsigned> break_set_in_scc;
-        std::set_intersection(states_in_scc.begin(), states_in_scc.end(), break_set.begin(), break_set.end(), std::inserter(break_set_in_scc, break_set_in_scc.begin()));
-        std::set<unsigned> break_set_succ = this->get_all_successors(std::set<unsigned>(break_set_in_scc.begin(), break_set_in_scc.end()), symbol);
-        std::set<unsigned> inter;
-        std::set_intersection(break_set_succ.begin(), break_set_succ.end(), states_in_scc.begin(), states_in_scc.end(), std::inserter(inter, inter.begin()));
-        if (is_accepting_weakscc(scc_types_, i))
-        {
-          std::set<unsigned> inter2;
-          std::set_intersection(inter.begin(), inter.end(), states_in_scc.begin(), states_in_scc.end(), std::inserter(inter2, inter2.begin()));
-          new_break_set.insert(inter2.begin(), inter2.end());
-        }
+        states_in_sccs.insert(scc_info_.states_of(i).begin(), scc_info_.states_of(i).end()); 
       }
+        
+      std::set<unsigned> inter;
+      std::set_intersection(break_set_succ.begin(), break_set_succ.end(), states_in_sccs.begin(), states_in_sccs.end(), std::inserter(new_break_set, new_break_set.begin()));
 
       // simulation
       if (decomp_options_.iw_sim)
@@ -1982,7 +1972,12 @@ namespace cola
         auto top = todo_.front();
         todo_.pop_front();
         complement_mstate ms = top.first;
-        // std::cerr << std::endl << "State: " << get_name(ms) << std::endl;
+        
+        // no successors for sink state
+        if (ms.active_index_ == -1)
+          continue;
+
+        std::cerr << std::endl << "State: " << get_name(ms) << std::endl;
         active_index = ms.active_index_;
 
         if (active_index >= 0 and is_weakscc(scc_types_, active_index) and (not is_accepting_weakscc(scc_types_, active_index)) and not is_empty)
@@ -2032,7 +2027,7 @@ namespace cola
         {
           bdd letter = bdd_satoneset(all, msupport, bddfalse);
           all -= letter;
-          // std::cerr << "Current symbol: " << letter << std::endl;
+          std::cerr << "Current symbol: " << letter << std::endl;
 
           std::set<unsigned> all_succ = mh.get_all_successors(reachable, letter);
 
@@ -2460,7 +2455,7 @@ namespace cola
                 new_succ[i].det_break_set_ = result;
               }
 
-              // std::cerr << "New succ: " << get_name(new_succ[i]) << std::endl;
+              std::cerr << "New succ: " << get_name(new_succ[i]) << std::endl;
               if (std::find(all_states.begin(), all_states.end(), new_succ[i]) == all_states.end())
               {
                 all_states.push_back(new_succ[i]);
