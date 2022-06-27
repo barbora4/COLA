@@ -608,7 +608,7 @@ namespace cola
 
   std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>
   mh_complement::get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index)
-  {
+  { 
     std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> succ;
 
     std::set<unsigned> all_succ = this->get_all_successors(reachable, symbol);
@@ -639,6 +639,7 @@ namespace cola
       std::set<unsigned> new_S(succ_in_scc.begin(), succ_in_scc.end());
       for (auto pr : dir_sim_)
       {
+        // std::cerr << pr.first << " " << pr.second << std::endl;
         if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
         {
           if (reachable_vector_[pr.second].find(pr.first) == reachable_vector_[pr.second].end())
@@ -652,6 +653,7 @@ namespace cola
           }
         }
       }
+      // std::cerr << std::endl;
       succ_in_scc = new_S;
     }
 
@@ -2428,7 +2430,34 @@ namespace cola
                 new_succ[i].set_active_index(active_index);
               new_succ[i].set_iw_sccs(iw_succ);
 
-              new_succ[i].curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
+              if (decomp_options_.iw_sim)
+              {
+                // simulation on currently reachable states
+                std::set<unsigned> aux_reach(all_succ.begin(), all_succ.end());
+                std::set<unsigned> new_reach;
+                for (auto state : all_succ)
+                {
+                  if (not is_weakscc(scc_types_, scc_info.scc_of(state)))
+                  {
+                    aux_reach.erase(state);
+                    new_reach.insert(state);
+                  }
+                }
+
+                for (auto pr : dir_sim_)
+                {
+                  if (pr.first != pr.second and aux_reach.find(pr.first) != aux_reach.end() and aux_reach.find(pr.second) != aux_reach.end() and reachable_vector[pr.second].find(pr.first) == reachable_vector[pr.second].end())
+                    aux_reach.erase(pr.first);
+                }
+
+                aux_reach.insert(new_reach.begin(), new_reach.end());
+
+                new_succ[i].curr_reachable_ = std::vector<unsigned>(aux_reach.begin(), aux_reach.end());
+              }
+              else
+              {
+                new_succ[i].curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
+              }
 
               if (is_weakscc(scc_types_, new_succ[i].active_index_) and not decomp_options_.tgba)
               {
