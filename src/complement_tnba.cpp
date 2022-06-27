@@ -585,6 +585,7 @@ namespace cola
     {
       // remove smaller states from S
       std::set<unsigned> new_S(succ_in_scc.begin(), succ_in_scc.end());
+      
       for (auto pr : dir_sim_)
       {
         if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
@@ -985,6 +986,28 @@ namespace cola
       //   remove_label(ms.nondetscc_labels_[i], nondet_remove[i]);
       //   merge_redundant_states(ms, ms.nondetscc_labels_[i], true);
       // }
+    }
+
+    spot::twa_graph_ptr postprocess(spot::twa_graph_ptr aut)
+    { 
+      spot::scc_info da(aut, spot::scc_info_options::ALL);
+      // set of states -> the forest of reachability in the states.
+      mstate_equiv_map set2scc;
+      // record the representative of every SCC
+      for (auto p = rank2n_.begin(); p != rank2n_.end(); p++)
+      {
+          const state_set set = p->first.get_reach_set();
+          // first the set of reached states
+          auto val = set2scc.emplace(set, state_set());
+          val.first->second.insert(p->second);
+      }
+      mstate_merger merger(aut, set2scc, da, om_);
+      spot::twa_graph_ptr res = merger.run();
+      if (om_.get(VERBOSE_LEVEL) >= 1)
+      std::cout << "The number of states reduced by mstate_merger: "
+                  << (aut->num_states() - res->num_states()) << " {out of "
+                  << aut->num_states() << "}" << std::endl;
+      return res;
     }
 
     void
@@ -2486,6 +2509,8 @@ namespace cola
       //   res_ = spot::simulation(res_, &impl, -1);
       // }
 
+      if (this->acc_detsccs_.size() == 0)
+        res_ = postprocess(res_);
       return res_;
     }
   };
