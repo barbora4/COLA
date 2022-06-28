@@ -22,6 +22,7 @@
 //#include "struct.hpp"
 #include "decomposer.hpp"
 #include "mh_compl.hpp"
+#include "rankings.hpp"
 
 #include <deque>
 #include <map>
@@ -2264,6 +2265,19 @@ namespace cola
   spot::twa_graph_ptr
   complement_tnba(const spot::twa_graph_ptr &aut, spot::option_map &om, compl_decomp_options decomp_options)
   {
+    // // TEST -----------------------------------------------------------------------------------------------
+    // std::vector<std::tuple<unsigned, int, bool>> mp;
+    // for (unsigned i=0; i<5; i++)
+    // {
+    //   if (i == 2 or i == 4)
+    //     mp.push_back(std::make_tuple(i, 10, true));
+    //   else
+    //     mp.push_back(std::make_tuple(i, 10, false));
+    // }
+    // get_tight_rankings(mp);
+    // std::cerr << std::endl;
+    // // END TEST -------------------------------------------------------------------------------------------
+    
     const int trans_pruning = om.get(NUM_TRANS_PRUNING);
     // now we compute the simulator
     spot::twa_graph_ptr aut_reduced;

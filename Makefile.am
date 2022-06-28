@@ -51,6 +51,8 @@ src_libcola_la_SOURCES =			\
   src/simulation.hpp			\
   src/types.hpp           \
   src/mh_compl.hpp        \
-  src/mh_compl.cpp
+  src/mh_compl.cpp        \
+  src/rankings.hpp        \
+  src/rankings.cpp  
 
 cola_SOURCES = src/main.cpp
