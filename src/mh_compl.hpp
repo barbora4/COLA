@@ -25,23 +25,27 @@
 #include <spot/twa/acc.hh>
 
 // Miyano-Hayashi complementation for IW components
-class mh_complement
+namespace cola 
 {
-private:
-  // source automaton
-  const spot::const_twa_graph_ptr aut_;
-  spot::scc_info scc_info_;
-  std::string scc_types_;
-  compl_decomp_options decomp_options_;
-  std::vector<std::pair<unsigned, unsigned>> dir_sim_;
-  std::vector<std::set<int>> reachable_vector_;
-
-public:
-  mh_complement(const spot::const_twa_graph_ptr &aut, spot::scc_info &scc_info, std::string scc_types, compl_decomp_options decomp_options, std::vector<std::pair<unsigned, unsigned>> dir_sim) : aut_(aut), scc_info_(scc_info), scc_types_(scc_types), decomp_options_(decomp_options), dir_sim_(dir_sim) {}
-  std::vector<std::pair<std::set<unsigned>, unsigned>> get_succ_track(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index);
-  std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index);
-  std::pair<std::vector<std::pair<std::set<unsigned>, unsigned>>, std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>> get_succ_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index, std::vector<unsigned> break_set, bool one_scc=false);
-  std::set<unsigned> get_all_successors(std::set<unsigned> current_states, bdd symbol);
-  std::vector<std::set<int>>  get_reachable_vector();
-  std::set<int> reachable_vertices(std::vector<std::vector<int>> list, std::set<int> from);
-};
+  class mh_complement
+  {
+  private:
+    // source automaton
+    const spot::const_twa_graph_ptr aut_;
+    spot::scc_info scc_info_;
+    std::string scc_types_;
+    compl_decomp_options decomp_options_;
+    std::vector<std::pair<unsigned, unsigned>> dir_sim_;
+    std::vector<std::set<int>> reachable_vector_;
+  
+  public:
+    mh_complement(const spot::const_twa_graph_ptr &aut, spot::scc_info &scc_info, std::string scc_types, compl_decomp_options decomp_options, std::vector<std::pair<unsigned, unsigned>> dir_sim) : aut_(aut), scc_info_(scc_info), scc_types_(scc_types), decomp_options_(decomp_options), dir_sim_(dir_sim) {}
+  
+    std::vector<std::pair<std::set<unsigned>, unsigned>> get_succ_track(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index);
+    std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>> get_succ_track_to_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index);
+    std::pair<std::vector<std::pair<std::set<unsigned>, unsigned>>, std::vector<std::pair<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned>>> get_succ_active(std::set<unsigned> reachable, std::set<unsigned> reach_in_scc, bdd symbol, std::vector<unsigned> scc_index, std::vector<unsigned> break_set, bool one_scc=false);
+    std::set<unsigned> get_all_successors(std::set<unsigned> current_states, bdd symbol);
+    std::vector<std::set<int>>  get_reachable_vector();
+    std::set<int> reachable_vertices(std::vector<std::vector<int>> list, std::set<int> from);
+  };
+}

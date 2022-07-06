@@ -132,6 +132,27 @@ namespace cola
     return res;
   }
 
+  std::string
+  get_set_string_box(const std::set<int> &set)
+  {
+    std::string res = "{";
+    bool first = true;
+    for (state_t s : set)
+    {
+      if (first)
+      {
+        first = false;
+      }
+      else
+      {
+        res += ", ";
+      }
+      res += std::to_string(s);
+    }
+    res += "}";
+    return res;
+  }
+
   // NOTE: copied from spot/twaalgos/deterministic.cc in SPOT
   //res[i + scccount*j] = 1 iff SCC i is reachable from SCC j
   std::vector<bool>

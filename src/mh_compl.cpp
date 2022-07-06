@@ -2,7 +2,9 @@
 
 #include <stack>
 
-std::vector<std::set<int>> 
+namespace cola 
+{
+  std::vector<std::set<int>> 
   mh_complement::get_reachable_vector()
   {
     std::vector<std::set<int>> list_set(aut_->num_states());
@@ -262,3 +264,4 @@ std::vector<std::set<int>>
 
     return successors;
   }
+} 

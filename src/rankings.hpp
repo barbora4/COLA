@@ -20,6 +20,96 @@ namespace cola
             unsigned get_max_rank(){return max_rank;};
             void set_max_rank(unsigned max_rank){this->max_rank = max_rank;};
             void check_tight(std::vector<ranking> rankings);
+            bool is_bigger(ranking other);
+    };
+
+    struct rank_state 
+    {
+        std::set<int> reachable;
+        ranking f;
+        std::set<int> O;
+        int i=-1;
+        bool track = true;
+
+        bool operator==(const rank_state &other) const
+        {
+            if (this->reachable == other.reachable)
+            {
+                if (this->f == other.f)
+                {
+                    if (this->O == other.O)
+                    {
+                        if (this->i == other.i)
+                        {
+                            if (this->track == other.track)
+                            {
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        bool operator<(const rank_state &other) const
+        {
+            if (this->reachable == other.reachable)
+            {
+                if (this->f == other.f)
+                {
+                    if (this->O == other.O)
+                    {
+                        if (this->i == other.i)
+                        {
+                            if (this->track == other.track)
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                return this->track < other.track;
+                            }
+                        }
+                        else
+                        {
+                            return this->i < other.i;
+                        }
+                    }
+                    else
+                    {
+                        return this->O < other.O;
+                    }
+                }
+                else
+                {
+                    return this->f < other.f;
+                }
+            }
+            else
+            {
+                return this->reachable < other.reachable;
+            }
+        }
     };
 
     static bool compare_ranks(std::tuple<int, int, bool> first, std::tuple<int, int, bool> second);

@@ -181,6 +181,9 @@ namespace cola
   std::string
   get_set_string(const std::set<unsigned> &set);
 
+  std::string
+  get_set_string_box(const std::set<int> &set);
+
   /// \brief Compute the reachability of the SCCs
   ///
   ///
