@@ -39,6 +39,8 @@ namespace cola
             std::set<int> get_successors_with_box(std::set<unsigned> reachable, rank_state state, bdd letter);
 
             void get_max(std::vector<ranking>& rankings);
+            std::vector<ranking> get_maxrank(std::set<unsigned> reachable, rank_state state, bdd letter);
+            std::vector<ranking> get_succ_rankings(ranking r, std::vector<std::tuple<int, int, bool>> restr, std::set<unsigned> reachable, bdd letter);
 
             std::vector<std::pair<rank_state, bool>> get_succ_track(std::set<unsigned> reachable, rank_state state, bdd letter);
             std::vector<std::pair<rank_state, bool>> get_succ_track_to_active(std::set<unsigned> reachable, rank_state state, bdd letter);

@@ -26,13 +26,22 @@ namespace cola
     std::set<int> rank_complement::get_successors_with_box(std::set<unsigned> reachable, rank_state state, bdd letter)
     {
         std::set<int> succ;
+
+        std::set<int> state_set;
+        if (state.track)
+            state_set = state.reachable;
+        else
+        {
+            for (auto pr : state.f)
+                state_set.insert(pr.first);
+        }
         
-        if (state.reachable.size() == 0)
+        if (state_set.size() == 0)
             return succ;
-        unsigned scc_index = scc_info_.scc_of(*(state.reachable.begin()));
+        unsigned scc_index = scc_info_.scc_of(*(state_set.begin()));
 
         // box
-        if (state.reachable.find(-1) != state.reachable.end())
+        if (state_set.find(-1) != state_set.end())
         {
             auto all_succ = get_all_successors(reachable, letter);
             for (auto state : all_succ)
@@ -55,7 +64,7 @@ namespace cola
         else 
         {
             std::set<unsigned> tmp;
-            for (auto s : state.reachable)
+            for (auto s : state_set)
             {
                 tmp.insert((int)s);
             }
@@ -88,6 +97,63 @@ namespace cola
 
         rankings = tmp;
     }
+
+    std::vector<ranking> rank_complement::get_succ_rankings(ranking r, std::vector<std::tuple<int, int, bool>> restr, std::set<unsigned> reachable, bdd letter)
+    {
+        std::vector<ranking> rankings = get_tight_rankings(restr);
+        std::vector<ranking> tmp(rankings.begin(), rankings.end());
+
+        for (ranking r2 : tmp)
+        {
+            bool skip = false;
+            for (auto pr : r2)
+            {
+                auto state = pr.first;
+                std::set<int> sing;
+                sing.insert(state);
+                rank_state tmp;
+                tmp.reachable = sing;
+                tmp.track = true;
+                std::set<int> succ = get_successors_with_box(reachable, tmp, letter);
+
+                for (auto s : succ)
+                {
+                    if (pr.second < r2[s])
+                    {
+                        skip = true;
+                        rankings.erase(std::remove(rankings.begin(), rankings.end(), r2), rankings.end());
+                        break;
+                    }
+                }
+                if (skip)
+                    break;
+            }
+        }
+
+        return rankings;
+    }
+
+    std::vector<ranking> rank_complement::get_maxrank(std::set<unsigned> reachable, rank_state state, bdd letter)
+    {
+        std::vector<std::tuple<int, int, bool>> restr;
+
+        std::set<int> domain;
+        for (auto pr : state.f)
+            domain.insert(pr.first);
+
+        auto succ_domain = get_successors_with_box(reachable, state, letter);
+        int size = -1;
+        for (auto s : succ_domain)
+        {
+            if (size < 0)
+                size = scc_info_.states_of(scc_info_.scc_of(s)).size();
+            restr.push_back(std::make_tuple(s, 2*(size + 1), is_accepting_[s]));
+        }
+        
+        std::vector<ranking> succ_rankings = get_succ_rankings(state.f, restr, reachable, letter);
+        get_max(succ_rankings);
+        return succ_rankings;
+    }
     
     std::vector<std::pair<rank_state, bool>> rank_complement::get_succ_track(std::set<unsigned> reachable, rank_state state, bdd letter)
     {
@@ -100,7 +166,12 @@ namespace cola
         else 
         {
             // active type
+            std::cerr << "getSuccTrack" << std::endl;
+            std::vector<ranking> maxrank = get_maxrank(reachable, state, letter);
             // TODO
+            std::cerr << "Rankings..." << std::endl;
+            std::cerr << "Maxrank size: " << maxrank.size() << std::endl;
+            // TODO CONTINUE HERE
         }
     }
 
@@ -118,10 +189,13 @@ namespace cola
 
             // TODO
             std::vector<std::tuple<int, int, bool>> r;
+            int size = -1;
             for (auto s : reach_succ)
             {
+                if (size < 0)
+                    size = scc_info_.states_of(scc_info_.scc_of(s)).size();
                 bool accepting = (s != -1 ? is_accepting_[s] : false);
-                r.push_back(std::make_tuple(s, 2*reach_succ.size(), accepting));
+                r.push_back(std::make_tuple(s, 2*(size + 1), accepting));
             }
             std::vector<ranking> rankings = get_tight_rankings(r);
             get_max(rankings);
@@ -130,6 +204,7 @@ namespace cola
                 rank_state new_state;
                 new_state.f = r;
                 new_state.i = 0;
+                new_state.track = false;
                 for (auto pr : r)
                 {
                     if (pr.second == 0)
@@ -142,6 +217,8 @@ namespace cola
         else
         {
             // active type
+            std::cerr << "getSuccTrackToActive" << std::endl;
+            auto ret = get_succ_track(reachable, state, letter);
             // TODO
         }
 
@@ -185,6 +262,8 @@ namespace cola
         else 
         {
             // active type
+            std::cerr << "getSuccTrackToActive" << std::endl;
+            auto ret = get_succ_track(reachable, state, letter);
             // TODO
         }
 

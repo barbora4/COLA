@@ -241,14 +241,7 @@ namespace cola
             {
               if (curr_reachable_ == other.curr_reachable_)
               {
-                if (na_sccs_ == other.na_sccs_)
-                {
-                  return false;
-                }
-                else
-                {
-                  return na_sccs_ < other.na_sccs_;
-                }
+                return na_sccs_ < other.na_sccs_;
               }
               else
               {
@@ -295,6 +288,8 @@ namespace cola
     if (this->acc_detsccs_ != other.acc_detsccs_)
       return false;
     if (this->curr_reachable_ != other.curr_reachable_)
+      return false;
+    if (this->na_sccs_ != other.na_sccs_)
       return false;
     return true;
   }
@@ -372,6 +367,22 @@ namespace cola
     for (auto s : curr_reachable_)
     {
       res ^= (res << 3) ^ s;
+    }
+    for (auto v : na_sccs_)
+    {
+      for (auto s : v.reachable)
+      {
+        res ^= (res << 3) ^ s;
+      }
+      res ^= (res << 3) ^ v.i;
+      for (auto s : v.O)
+      {
+        res ^= (res << 3) ^ s;
+      }
+      for (auto pr : v.f)
+      {
+        res ^= (res << 3) ^ (pr.first ^ pr.second);
+      }
     }
 
     return res;
@@ -2220,7 +2231,7 @@ namespace cola
               active_type = true;
               if ((is_weakscc(scc_types_, active_index) and  ms.iw_break_set_.size() == 0) or (not is_weakscc(scc_types_, active_index) and is_accepting_detscc(scc_types_, active_index) and ms.det_break_set_.size() == 0))
                 active_type = false;
-              if (decomp_options_.tgba and ms.det_break_set_.size() == 0) // TODO
+              if (decomp_options_.tgba and (not is_weakscc(scc_types_, active_index) and is_accepting_detscc(scc_types_, active_index) and ms.det_break_set_.size() == 0)) // TODO
                 active_type = false;
 
               if (not active_type)
