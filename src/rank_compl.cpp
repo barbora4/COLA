@@ -157,6 +157,8 @@ namespace cola
     
     std::vector<std::pair<rank_state, bool>> rank_complement::get_succ_track(std::set<unsigned> reachable, rank_state state, bdd letter)
     {
+        std::vector<std::pair<rank_state, bool>> succ;
+
         if (state.track)
         {
             // tracking type
@@ -168,11 +170,16 @@ namespace cola
             // active type
             std::cerr << "getSuccTrack" << std::endl;
             std::vector<ranking> maxrank = get_maxrank(reachable, state, letter);
-            // TODO
-            std::cerr << "Rankings..." << std::endl;
-            std::cerr << "Maxrank size: " << maxrank.size() << std::endl;
-            // TODO CONTINUE HERE
+            if (maxrank.size() > 0)
+            {
+                rank_state s;
+                s.f = maxrank[0];
+                s.track = true;
+                succ.push_back({s, false});
+            }
         }
+
+        return succ;
     }
 
     std::vector<std::pair<rank_state, bool>> rank_complement::get_succ_track_to_active(std::set<unsigned> reachable, rank_state state, bdd letter)
@@ -218,8 +225,14 @@ namespace cola
         {
             // active type
             std::cerr << "getSuccTrackToActive" << std::endl;
-            auto ret = get_succ_track(reachable, state, letter);
-            // TODO
+            std::vector<std::pair<rank_state, bool>> ret = get_succ_track(reachable, state, letter);
+            
+            if (ret.size() > 0)
+            {
+                // TODO
+            }
+            
+            // otherwise no successor
         }
 
         for (auto state : succ)
@@ -263,8 +276,108 @@ namespace cola
         {
             // active type
             std::cerr << "getSuccTrackToActive" << std::endl;
-            auto ret = get_succ_track(reachable, state, letter);
-            // TODO
+            std::vector<std::pair<rank_state, bool>> ret = get_succ_track(reachable, state, letter);
+            if (ret.size() > 0)
+            {
+                ranking g = ret[0].first.f;
+
+                std::vector<rank_state> eta_3;
+                std::vector<rank_state> eta_4;
+
+                // eta 3
+                if (state.O.size() > 0)
+                {
+                    rank_state new_state;
+                    new_state.track = false;
+                    new_state.f = g;
+                    new_state.i = state.i;
+
+                    rank_state tmp;
+                    tmp.reachable = state.O;
+                    std::set<int> O_succ = get_successors_with_box(reachable, tmp, letter);
+                    std::set<int> g_rev;
+                    for (auto pr : g)
+                    {
+                        if (pr.second == state.i)
+                            g_rev.insert(pr.first);
+                    }
+                    std::set_intersection(O_succ.begin(), O_succ.end(), g_rev.begin(), g_rev.end(), std::inserter(new_state.O, new_state.O.begin()));
+
+                    eta_3.push_back(new_state);
+                }
+                else
+                {
+                    rank_state new_state;
+                    new_state.track = false;
+                    new_state.f = g;
+                    new_state.i = (state.i + 2) % (g.get_max_rank() + 1);
+
+                    std::set<int> dom_succ = get_successors_with_box(reachable, state, letter);
+                    std::set<int> g_rev;
+                    for (auto pr : g)
+                    {
+                        if (pr.second == new_state.i)
+                            g_rev.insert(pr.first);
+                    }
+                    std::set_intersection(dom_succ.begin(), dom_succ.end(), g_rev.begin(), g_rev.end(), std::inserter(new_state.O, new_state.O.begin()));
+
+                    eta_3.push_back(new_state);
+                }
+
+                // eta 4
+                if (state.i != 0)
+                {
+                    rank_state new_state;
+
+                    std::set<int> M;
+                    rank_state tmp;
+                    tmp.reachable = state.O;
+                    std::set<int> O_succ = get_successors_with_box(reachable, tmp, letter);
+                    std::set<int> g_rev;
+                    for (auto pr : g)
+                    {
+                        if (pr.second == state.i)
+                            g_rev.insert(pr.first);
+                    }
+                    std::set_intersection(O_succ.begin(), O_succ.end(), g_rev.begin(), g_rev.end(), std::inserter(M, M.begin()));
+
+                    new_state.track = false;
+                    new_state.i = state.i;
+                    for (auto s : M)
+                    {
+                        if (is_accepting_[s])
+                            new_state.O.insert(s);
+                    }
+
+                    ranking g_prime = g;
+                    for (auto &pr : g_prime)
+                    {
+                        if (not is_accepting_[pr.first] and M.find(pr.first) != M.end())
+                            pr.second = pr.second - 1;
+                    }
+
+                    eta_4.push_back(new_state);
+                }
+
+                std::vector<rank_state> U;
+                if (eta_3.size() > 0 and eta_3[0].O.size() == 0 and eta_3[0].i == eta_3[0].f.get_max_rank() - 1)
+                    U.push_back(eta_3[0]);
+                if (eta_4.size() > 0 and eta_4[0].O.size() == 0 and eta_4[0].i == eta_4[0].f.get_max_rank() - 1)
+                    U.push_back(eta_4[0]);
+
+                if (eta_3.size() > 0 and std::find(U.begin(), U.end(), eta_3[0]) == U.end())
+                    succ.push_back({eta_3[0], false});
+                if (eta_4.size() > 0 and std::find(U.begin(), U.end(), eta_4[0]) == U.end())
+                    succ.push_back({eta_4[0], false});
+
+                for (rank_state s : U)
+                {
+                    rank_state tmp;
+                    tmp.track = false;
+                    tmp.f = s.f;
+                    succ.push_back({tmp, true});
+                }
+            }
         }
 
         return succ;
