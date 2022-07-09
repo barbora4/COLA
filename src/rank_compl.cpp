@@ -162,8 +162,10 @@ namespace cola
         if (state.track)
         {
             // tracking type
-            // TODO
-            std::cerr << "TODO" << std::endl;
+            rank_state new_state;
+            new_state.track = true;
+            new_state.reachable = get_successors_with_box(reachable, state, letter);
+            succ.push_back({new_state, false});
         }
         
         else 
@@ -193,7 +195,7 @@ namespace cola
             auto reach_succ = get_successors_with_box(reachable, state, letter);
             new_state.reachable = reach_succ;
             succ.push_back({new_state, false});
-
+            
             std::vector<std::tuple<int, int, bool>> r;
             int size = -1;
             for (auto s : reach_succ)
@@ -258,13 +260,17 @@ namespace cola
                 if (one_scc)
                 {
                     // only one scc
-                    // TODO getSuccTrackToActive + acc trans
-                    std::cerr << "TODO" << std::endl;
+                    std::vector<std::pair<rank_state, bool>> ret = get_succ_track_to_active(reachable, state, letter);
+
+                    if (ret.size() > 0)
+                        succ.push_back({ret[0].first, true});
                 }
                 else
                 {
-                    // TODO getSuccTrack + acc trans
-                    std::cerr << "TODO" << std::endl;
+                    rank_state new_state;
+                    new_state.track = true;
+                    new_state.reachable = get_successors_with_box(reachable, state, letter);
+                    succ.push_back({new_state, true}); 
                 }
             }
 
@@ -356,6 +362,7 @@ namespace cola
                         if (not is_accepting_[pr.first] and M.find(pr.first) != M.end())
                             pr.second = pr.second - 1;
                     }
+                    new_state.f = g_prime;
 
                     eta_4.push_back(new_state);
                 }
@@ -376,7 +383,7 @@ namespace cola
                     if (not one_scc)
                     {
                         rank_state tmp;
-                        tmp.track = false;
+                        tmp.track = true;
                         tmp.f = s.f;
                         succ.push_back({tmp, true});
                     }

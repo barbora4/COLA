@@ -98,36 +98,39 @@ namespace cola
         std::vector<ranking> rankings;
 
         // get max rank
-        auto max = std::max_element(mp.begin(), mp.end(), compare_ranks);
-        int max_rank = std::get<1>(*max);
-        if (max_rank > 2*mp.size())
-            max_rank = 2*mp.size();
-
-        // odd rank
-        if (max_rank == 0)
-            return rankings;
-        if (max_rank % 2 == 0)
-            max_rank--;
-
-        for (auto state : mp)
+        if (mp.size() > 0)
         {
-            if (rankings.size() == 0)
-            {
-                for (int i=0; i<std::get<1>(state); (std::get<2>(state) ? i+=2 : i++))
-                {
-                    ranking r;
-                    r[std::get<0>(state)] = i;
-                    r.set_max_rank(i);
-                    rankings.push_back(r); 
-                }
-            } 
-            else
-            {
-                rankings = cart_product(rankings, state);
-            }
-        }
+            auto max = std::max_element(mp.begin(), mp.end(), compare_ranks);
+            int max_rank = std::get<1>(*max);
+            if (max_rank > 2*mp.size())
+                max_rank = 2*mp.size();
 
-        check_tight(rankings);
+            // odd rank
+            if (max_rank == 0)
+                return rankings;
+            if (max_rank % 2 == 0)
+                max_rank--;
+
+            for (auto state : mp)
+            {
+                if (rankings.size() == 0)
+                {
+                    for (int i=0; i<std::get<1>(state); (std::get<2>(state) ? i+=2 : i++))
+                    {
+                        ranking r;
+                        r[std::get<0>(state)] = i;
+                        r.set_max_rank(i);
+                        rankings.push_back(r); 
+                    }
+                } 
+                else
+                {
+                    rankings = cart_product(rankings, state);
+                }
+            }
+
+            check_tight(rankings);
+        }
 
         return rankings;
     }
