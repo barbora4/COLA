@@ -118,7 +118,7 @@ namespace cola
 
                 for (auto s : succ)
                 {
-                    if (pr.second < r[s])
+                    if (r2[s] > r[state])
                     {
                         skip = true;
                         rankings.erase(std::remove(rankings.begin(), rankings.end(), r2), rankings.end());

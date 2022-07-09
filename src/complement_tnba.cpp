@@ -2002,6 +2002,9 @@ namespace cola
 
                   if (succ_active.first.size() > 0)
                     active_type = false;
+
+                  for (unsigned j = 0; j < new_succ.size(); j++)
+                    new_succ[j].iw_sccs_ = iw_succ;
                 }
 
                 // getSuccTrackToActive
@@ -2014,9 +2017,14 @@ namespace cola
                       iw_succ[0] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
                     else
                       iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
-                    new_succ[0].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
-                    new_succ[1].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
-                    // new_succ[1].set_active_index(-2);
+
+                    for (unsigned j = 0; j < new_succ.size(); j++)
+                    {
+                      new_succ[j].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+                      new_succ[j].iw_sccs_ = iw_succ;
+                    }
+                    // new_succ[1].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+                    //  new_succ[1].set_active_index(-2);
                   }
                   active_type = true;
                 }
@@ -2122,9 +2130,48 @@ namespace cola
               if (is_weakscc(scc_types_, index[0]))
               {
                 iwa_done = true;
-                // getSuccTrack
-                if (active_type or ((index[0] != (indices[(orig_index + 1) % indices.size()]))) or (not is_accepting_weakscc(scc_types_, index[0])))
+
+                if (std::find(this->acc_nondetsccs_.begin(), this->acc_nondetsccs_.end(), indices[orig_index]) == this->acc_nondetsccs_.end())
                 {
+                  // getSuccTrack
+                  if (active_type or ((index[0] != (indices[(orig_index + 1) % indices.size()]))) or (not is_accepting_weakscc(scc_types_, index[0])))
+                  {
+                    auto succ_track = mh.get_succ_track(reachable, reach_track, letter, index);
+                    for (auto succ : succ_track)
+                    {
+                      if (decomp_options_.merge_iwa)
+                        iw_succ[0] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
+                      else
+                        iw_succ[true_index] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
+                    }
+                  }
+
+                  // getSuccTrackToActive
+                  else
+                  {
+                    auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
+                    for (auto succ : succ_track_to_active)
+                    {
+                      if (decomp_options_.merge_iwa)
+                        iw_succ[0] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+                      else
+                        iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+                      for (unsigned i = 0; i < new_succ.size(); i++)
+                      {
+                        new_succ[i].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+                      }
+                    }
+                  }
+                }
+
+                else
+                {
+                  std::vector<std::vector<unsigned>> iw_succ2;
+                  for (auto v : iw_succ)
+                    iw_succ2.push_back(v);
+
+                  std::vector<unsigned> break_set;
+
                   auto succ_track = mh.get_succ_track(reachable, reach_track, letter, index);
                   for (auto succ : succ_track)
                   {
@@ -2133,21 +2180,29 @@ namespace cola
                     else
                       iw_succ[true_index] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
                   }
-                }
 
-                // getSuccTrackToActive
-                else
-                {
                   auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
                   for (auto succ : succ_track_to_active)
                   {
                     if (decomp_options_.merge_iwa)
-                      iw_succ[0] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+                      iw_succ2[0] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
                     else
-                      iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
-                    for (unsigned i = 0; i < new_succ.size(); i++)
+                      iw_succ2[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+                    break_set = std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end());
+                  }
+
+                  for (unsigned j = 0; j < succ_na.size(); j++)
+                  {
+                    if (acc_succ[j])
                     {
-                      new_succ[i].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+                      // track to active
+                      new_succ[j].iw_sccs_ = iw_succ2;
+                      new_succ[j].iw_break_set_ = break_set;
+                    }
+                    else
+                    {
+                      // track
+                      new_succ[j].iw_sccs_ = iw_succ;
                     }
                   }
                 }
@@ -2155,7 +2210,6 @@ namespace cola
 
               else if (is_accepting_detscc(scc_types_, index[0]))
               {
-                std::cerr << "Begin" << std::endl;
                 std::vector<state_rank> ranks;
                 if (not decomp_options_.merge_det)
                 {
@@ -2248,7 +2302,7 @@ namespace cola
                   }
 
                   std::vector<complement_mstate> new_state_vector;
-                  for (unsigned j=0; j<succ_na.size(); j++)
+                  for (unsigned j = 0; j < succ_na.size(); j++)
                   {
                     if (acc_succ[j])
                     {
@@ -2271,7 +2325,7 @@ namespace cola
                       // track
                       if (new_state_track.active_index_ != -2)
                         new_succ[j].acc_detsccs_ = new_state_track.acc_detsccs_;
-                      else  
+                      else
                         new_succ[j].active_index_ = -2;
                     }
                   }
@@ -2279,7 +2333,6 @@ namespace cola
                   for (auto s : new_state_vector)
                     new_succ.push_back(s);
                 }
-                std::cerr << "End" << std::endl;
               }
 
               else
@@ -2358,7 +2411,7 @@ namespace cola
               }
               else
                 new_succ[i].set_active_index(active_index);
-              new_succ[i].set_iw_sccs(iw_succ);
+              // new_succ[i].set_iw_sccs(iw_succ);
 
               if (decomp_options_.iw_sim)
               {
