@@ -129,11 +129,6 @@ namespace cola
 
         check_tight(rankings);
 
-        for (auto r : rankings)
-        {
-            std::cerr << r.get_name() << std::endl;
-        }
-
         return rankings;
     }
 

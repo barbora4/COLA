@@ -118,7 +118,7 @@ namespace cola
 
                 for (auto s : succ)
                 {
-                    if (pr.second < r2[s])
+                    if (pr.second < r[s])
                     {
                         skip = true;
                         rankings.erase(std::remove(rankings.begin(), rankings.end(), r2), rankings.end());
@@ -163,12 +163,12 @@ namespace cola
         {
             // tracking type
             // TODO
+            std::cerr << "TODO" << std::endl;
         }
         
         else 
         {
             // active type
-            std::cerr << "getSuccTrack" << std::endl;
             std::vector<ranking> maxrank = get_maxrank(reachable, state, letter);
             if (maxrank.size() > 0)
             {
@@ -194,7 +194,6 @@ namespace cola
             new_state.reachable = reach_succ;
             succ.push_back({new_state, false});
 
-            // TODO
             std::vector<std::tuple<int, int, bool>> r;
             int size = -1;
             for (auto s : reach_succ)
@@ -224,20 +223,23 @@ namespace cola
         else
         {
             // active type
-            std::cerr << "getSuccTrackToActive" << std::endl;
             std::vector<std::pair<rank_state, bool>> ret = get_succ_track(reachable, state, letter);
             
             if (ret.size() > 0)
             {
-                // TODO
+                rank_state new_state;
+                new_state.track = false;
+                new_state.f = ret[0].first.f;
+                new_state.i = 0;
+                for (auto pr : new_state.f)
+                {
+                    if (pr.second == 0)
+                        new_state.O.insert(pr.first);
+                }
+                succ.push_back({new_state, false});
             }
             
             // otherwise no successor
-        }
-
-        for (auto state : succ)
-        {
-            std::cerr << get_set_string_box(state.first.reachable) << std::endl;
         }
 
         return succ;
@@ -257,17 +259,17 @@ namespace cola
                 {
                     // only one scc
                     // TODO getSuccTrackToActive + acc trans
+                    std::cerr << "TODO" << std::endl;
                 }
                 else
                 {
                     // TODO getSuccTrack + acc trans
+                    std::cerr << "TODO" << std::endl;
                 }
             }
 
             else 
             {
-                // TODO getSuccTrackToActive
-                std::cerr << "getSuccTrackToActive" << std::endl;
                 succ = get_succ_track_to_active(reachable, state, letter);
             }
         }
@@ -275,7 +277,6 @@ namespace cola
         else 
         {
             // active type
-            std::cerr << "getSuccTrackToActive" << std::endl;
             std::vector<std::pair<rank_state, bool>> ret = get_succ_track(reachable, state, letter);
             if (ret.size() > 0)
             {
@@ -372,10 +373,20 @@ namespace cola
 
                 for (rank_state s : U)
                 {
-                    rank_state tmp;
-                    tmp.track = false;
-                    tmp.f = s.f;
-                    succ.push_back({tmp, true});
+                    if (not one_scc)
+                    {
+                        rank_state tmp;
+                        tmp.track = false;
+                        tmp.f = s.f;
+                        succ.push_back({tmp, true});
+                    }
+                    else
+                    {
+                        std::vector<std::pair<rank_state, bool>> ret = get_succ_track_to_active(reachable, state, letter);
+
+                        if (ret.size() > 0)
+                            succ.push_back({ret[0].first, true});
+                    }
                 }
             }
         }

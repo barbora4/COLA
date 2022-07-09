@@ -1869,6 +1869,8 @@ namespace cola
           new_succ.push_back(new_succ1);
           new_succ.push_back(new_succ2);
 
+          std::vector<bool> acc_succ;
+
           // iw succ
           std::vector<std::vector<unsigned>> iw_succ(ms.iw_sccs_.size());
           if (decomp_options_.merge_iwa)
@@ -2097,6 +2099,7 @@ namespace cola
                     new_succ.push_back(new_state);
                   }
                   new_succ[j].na_sccs_[i] = succ_na[j].first; 
+                  acc_succ.push_back(succ_na[j].second);
                 }
                 
                 //std::cerr << "ERROR" << std::endl;
@@ -2233,6 +2236,8 @@ namespace cola
                 active_type = false;
               if (decomp_options_.tgba and (not is_weakscc(scc_types_, active_index) and is_accepting_detscc(scc_types_, active_index) and ms.det_break_set_.size() == 0)) // TODO
                 active_type = false;
+              if ((not is_weakscc(scc_types_, active_index)) and (not is_accepting_detscc(scc_types_, active_index)) and acc_succ[i])
+                active_type = false;
 
               if (not active_type)
               {
@@ -2347,9 +2352,15 @@ namespace cola
 
               auto p = rank2n_.emplace(new_succ[i], 0);
               if (active_type and not acc_edge)
+              {
                 res_->new_edge(top.second, p.first->second, letter);
+                std::cerr << "Nonaccepting" << std::endl;
+              }
               else
+              {
                 res_->new_edge(top.second, p.first->second, letter, {0});
+                std::cerr << "Accepting" << std::endl;
+              }
 
               if (decomp_options_.tgba and ms.iw_break_set_.size() == 0)
                 res_->new_edge(top.second, p.first->second, letter, {1});
@@ -2369,7 +2380,7 @@ namespace cola
       //   res_ = spot::simulation(res_, &impl, -1);
       // }
 
-      if (this->acc_detsccs_.size() == 0)
+      if (this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 0)
         res_ = postprocess(res_);
       return res_;
     }
