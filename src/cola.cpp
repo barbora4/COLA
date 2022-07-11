@@ -137,7 +137,7 @@ namespace cola
   {
     std::string res = "{";
     bool first = true;
-    for (state_t s : set)
+    for (int s : set)
     {
       if (first)
       {

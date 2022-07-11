@@ -36,14 +36,14 @@ namespace cola
             }
 
             std::set<unsigned> get_all_successors(std::set<unsigned> current_states, bdd symbol);
-            std::set<int> get_successors_with_box(std::set<unsigned> reachable, rank_state state, bdd letter);
+            std::set<int> get_successors_with_box(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index);
 
             void get_max(std::vector<ranking>& rankings);
-            std::vector<ranking> get_maxrank(std::set<unsigned> reachable, rank_state state, bdd letter);
-            std::vector<ranking> get_succ_rankings(ranking r, std::vector<std::tuple<int, int, bool>> restr, std::set<unsigned> reachable, bdd letter);
+            std::vector<ranking> get_maxrank(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index);
+            std::vector<ranking> get_succ_rankings(ranking r, std::vector<std::tuple<int, int, bool>> restr, std::set<unsigned> reachable, bdd letter, unsigned scc_index);
 
-            std::vector<std::pair<rank_state, bool>> get_succ_track(std::set<unsigned> reachable, rank_state state, bdd letter);
-            std::vector<std::pair<rank_state, bool>> get_succ_track_to_active(std::set<unsigned> reachable, rank_state state, bdd letter);
-            std::vector<std::pair<rank_state, bool>> get_succ_active(std::set<unsigned> reachable, rank_state state, bdd letter, bool one_scc);
+            std::vector<std::pair<rank_state, bool>> get_succ_track(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index);
+            std::vector<std::pair<rank_state, bool>> get_succ_track_to_active(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index);
+            std::vector<std::pair<rank_state, bool>> get_succ_active(std::set<unsigned> reachable, rank_state state, bdd letter, bool one_scc, unsigned scc_index);
     };
 }

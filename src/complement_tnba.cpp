@@ -1525,13 +1525,13 @@ namespace cola
       unsigned nonacc_weak = 0;
       for (unsigned i = 0; i < scc_types_.size(); i++)
       {
-        if (is_accepting_detscc(scc_types_, i))
-        {
-          acc_detsccs_.push_back(i);
-        }
-        else if (is_accepting_weakscc(scc_types_, i))
+        if (is_accepting_weakscc(scc_types_, i))
         {
           weaksccs_.push_back(i);
+        }
+        else if (is_accepting_detscc(scc_types_, i))
+        {
+          acc_detsccs_.push_back(i);
         }
         else if (is_accepting_nondetscc(scc_types_, i))
         {
@@ -1678,6 +1678,7 @@ namespace cola
         if (index != active_index or si_.scc_of(orig_init) != active_index)
         {
           rank_state tmp;
+          tmp.reachable.insert(-1); // TODO check predecessors
           na_sccs.push_back(tmp);
         }
         else
@@ -1970,6 +1971,7 @@ namespace cola
             {
               if (is_weakscc(scc_types_, index[0]))
               {
+                std::cerr << "Weak: " << index[0] << std::endl;
                 acc_edge = false;
                 iwa_done = true;
                 // getSuccActive
@@ -2089,7 +2091,7 @@ namespace cola
                 // nondet accepting scc
                 unsigned i = true_index - iw_succ.size() - acc_det_succ.size();
 
-                succ_na = rank_compl.get_succ_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, this->weaksccs_.size() == 0 and this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 1);
+                succ_na = rank_compl.get_succ_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, this->weaksccs_.size() == 0 and this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 1, index[0]);
 
                 std::cerr << "succ na size: " << succ_na.size() << std::endl;
 
@@ -2338,13 +2340,21 @@ namespace cola
               else
               {
                 // nondet accepting scc
+                std::cerr << "NAC: " << index[0] << std::endl;
                 unsigned i = true_index - iw_succ.size() - acc_det_succ.size();
 
                 std::vector<std::pair<rank_state, bool>> succ_na;
-                if (((index[0] != (indices[(orig_index + 1) % indices.size()]))))
-                  succ_na = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter);
+                if (active_type or ((index[0] != (indices[(orig_index + 1) % indices.size()]))))
+                {
+                  succ_na = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+                  std::cerr << "track to active" << std::endl;
+                  std::cerr << "na size: " << succ_na.size() << std::endl;
+                }
                 else
-                  succ_na = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter);
+                {
+                  succ_na = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+                  std::cerr << "track" << std::endl;
+                }
 
                 // copy new_succ[0]
                 if (succ_na.size() == 0)
