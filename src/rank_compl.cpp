@@ -65,7 +65,7 @@ namespace cola
             std::set<unsigned> tmp;
             for (auto s : state_set)
             {
-                tmp.insert((int)s);
+                tmp.insert((unsigned)s);
             }
             auto all_succ = get_all_successors(tmp, letter);
             for (auto state : all_succ)
@@ -105,7 +105,7 @@ namespace cola
         for (ranking r2 : tmp)
         {
             bool skip = false;
-            for (auto pr : r2)
+            for (auto pr : r)
             {
                 auto state = pr.first;
                 std::set<int> sing;
@@ -175,7 +175,7 @@ namespace cola
             {
                 rank_state s;
                 s.f = maxrank[0];
-                s.track = true;
+                s.track = false; // TODO
                 succ.push_back({s, false});
             }
         }
@@ -194,7 +194,6 @@ namespace cola
             auto reach_succ = get_successors_with_box(reachable, state, letter, scc_index);
             new_state.reachable = reach_succ;
             succ.push_back({new_state, false});
-            std::cerr << get_set_string_box(reach_succ) << std::endl;
             
             std::vector<std::tuple<int, int, bool>> r;
             int size = -1;
@@ -383,7 +382,7 @@ namespace cola
                     if (not one_scc)
                     {
                         rank_state tmp;
-                        tmp.track = true;
+                        tmp.track = false; // TODO
                         tmp.f = s.f;
                         succ.push_back({tmp, true});
                     }
