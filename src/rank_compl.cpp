@@ -101,9 +101,17 @@ namespace cola
     {
         std::vector<ranking> rankings = get_tight_rankings(restr);
         std::vector<ranking> tmp(rankings.begin(), rankings.end());
+        std::set<ranking> rankings_set(rankings.begin(), rankings.end());
 
         for (ranking r2 : tmp)
         {
+            if (r2.get_max_rank() != r.get_max_rank())
+            {
+                //rankings.erase(std::remove(rankings.begin(), rankings.end(), r2), rankings.end());
+                rankings_set.erase(r2);
+                continue;
+            }
+            
             bool skip = false;
             for (auto pr : r)
             {
@@ -120,7 +128,8 @@ namespace cola
                     if (r2[s] > r[state])
                     {
                         skip = true;
-                        rankings.erase(std::remove(rankings.begin(), rankings.end(), r2), rankings.end());
+                        //rankings.erase(std::remove(rankings.begin(), rankings.end(), r2), rankings.end());
+                        rankings_set.erase(r2);
                         break;
                     }
                 }
@@ -129,7 +138,10 @@ namespace cola
             }
         }
 
-        return rankings;
+        for (auto r : rankings_set)
+            std::cerr << r.get_name() << " -> " << r.get_max_rank() << std::endl;
+
+        return std::vector<ranking>(rankings_set.begin(), rankings_set.end()); 
     }
 
     std::vector<ranking> rank_complement::get_maxrank(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index)
@@ -142,12 +154,10 @@ namespace cola
 
         auto succ_domain = get_successors_with_box(reachable, state, letter, scc_index);
         int size = scc_info_.states_of(scc_index).size();
-        std::cerr << "Begin" << std::endl;
         for (auto s : succ_domain)
         {
             restr.push_back(std::make_tuple(s, 2*(size + 1), (s == -1) ? false : is_accepting_[s]));
         }
-        std::cerr << "End" << std::endl;
         
         std::vector<ranking> succ_rankings = get_succ_rankings(state.f, restr, reachable, letter, scc_index);
         get_max(succ_rankings);
@@ -349,14 +359,14 @@ namespace cola
                     new_state.i = state.i;
                     for (auto s : M)
                     {
-                        if (is_accepting_[s])
+                        if (s != -1 and is_accepting_[s])
                             new_state.O.insert(s);
                     }
 
                     ranking g_prime = g;
                     for (auto &pr : g_prime)
                     {
-                        if (not is_accepting_[pr.first] and M.find(pr.first) != M.end())
+                        if (pr.first != -1 and (not is_accepting_[pr.first] and M.find(pr.first) != M.end()))
                             pr.second = pr.second - 1;
                     }
                     new_state.f = g_prime;

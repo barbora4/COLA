@@ -1528,15 +1528,18 @@ namespace cola
         if (is_accepting_weakscc(scc_types_, i))
         {
           weaksccs_.push_back(i);
+          std::cerr << "IW: " << i << std::endl;
         }
         else if (is_accepting_detscc(scc_types_, i))
         {
           acc_detsccs_.push_back(i);
+          std::cerr << "DET: " << i << std::endl;
         }
         else if (is_accepting_nondetscc(scc_types_, i))
         {
           // accepting nondeterministic scc
           acc_nondetsccs_.emplace_back(i);
+          std::cerr << "NAC: " << i << std::endl;
         }
       }
 
@@ -2075,12 +2078,15 @@ namespace cola
                   // if (indices.find(i) != indices.end() or ms.iw_break_set_.empty())
                   //{
                   succ_det = get_succ_active_CSB((ms.det_break_set_.empty()) ? std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()) : reach_track, letter, ranks, i, new_succ[0], new_succ[1], acc_det_succ, true_index - iw_succ.size());
+                  std::cerr << "succ active: " << succ_det.size() << std::endl;
 
                   if (succ_det.empty())
                   {
                     new_succ[0].set_active_index(-2);
                     new_succ[1].set_active_index(-2);
                   }
+                  else if (new_succ[0].det_break_set_.size() > 0) // TODO
+                    active_type = false;
                   //}
                 }
               }
@@ -2338,17 +2344,24 @@ namespace cola
               else
               {
                 // nondet accepting scc
+                std::cerr << "Here" << std::endl;
                 unsigned i = true_index - iw_succ.size() - acc_det_succ.size();
-                std::cerr << (ms.na_sccs_[i].track ? "Waiting" : "Tight") << std::endl;
 
                 std::vector<std::pair<rank_state, bool>> succ_na;
+                bool to_active;
                 if (active_type or ((index[0] != (indices[(orig_index + 1) % indices.size()]))))
                 {
+                  std::cerr << "track to active" << std::endl;
                   succ_na = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+                  to_active = true;
+                  std::cerr << "track to active" << std::endl;
                 }
                 else
                 {
+                  std::cerr << "track" << std::endl;
                   succ_na = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+                  to_active = false;
+                  std::cerr << "track" << std::endl;
                 }
 
                 // copy new_succ[0]
@@ -2357,21 +2370,45 @@ namespace cola
                   new_succ[0].set_active_index(-2);
                   new_succ[1].set_active_index(-2);
                 }
-                if (succ_na.size() == 1)
-                  new_succ[1].set_active_index(-2);
-                new_succ.pop_back();
 
-                complement_mstate tmp_state(new_succ[0]);
-                for (unsigned j = 0; j < succ_na.size(); j++)
+                if (to_active)
                 {
-                  if (j != 0)
+                  if (succ_na.size() == 1)
+                    new_succ[1].set_active_index(-2);
+                  new_succ.pop_back();
+
+                  complement_mstate tmp_state(new_succ[0]);
+                  for (unsigned j = 0; j < succ_na.size(); j++)
                   {
-                    complement_mstate new_state(tmp_state);
-                    new_succ.push_back(new_state);
+                    if (j != 0)
+                    {
+                      complement_mstate new_state(tmp_state);
+                      new_succ.push_back(new_state);
+                    }
+                    new_succ[j].na_sccs_[i] = succ_na[j].first;
+                    acc_succ.push_back(succ_na[j].second);
                   }
-                  new_succ[j].na_sccs_[i] = succ_na[j].first;
-                  acc_succ.push_back(succ_na[j].second);
                 }
+
+                else
+                {
+                  complement_mstate tmp_state(new_succ[0]);
+                  unsigned count = new_succ.size();
+                  for (unsigned k = 0; k < count; k++)
+                  {
+                    for (unsigned j = 0; j < succ_na.size(); j++)
+                    {
+                      if (j != 0)
+                      {
+                        complement_mstate new_state(new_succ[k]);
+                        new_succ.push_back(new_state);
+                      }
+                      new_succ[k+j].na_sccs_[i] = succ_na[j].first;
+                      acc_succ.push_back(false);
+                    }
+                  }
+                }
+                std::cerr << "Here" << std::endl;
 
                 // std::cerr << "ERROR" << std::endl;
                 // throw std::runtime_error("nondeterministic accepting sccs not supported yet");
