@@ -141,13 +141,13 @@ namespace cola
             domain.insert(pr.first);
 
         auto succ_domain = get_successors_with_box(reachable, state, letter, scc_index);
-        int size = -1;
+        int size = scc_info_.states_of(scc_index).size();
+        std::cerr << "Begin" << std::endl;
         for (auto s : succ_domain)
         {
-            if (size < 0)
-                size = scc_info_.states_of(scc_info_.scc_of(s)).size();
-            restr.push_back(std::make_tuple(s, 2*(size + 1), is_accepting_[s]));
+            restr.push_back(std::make_tuple(s, 2*(size + 1), (s == -1) ? false : is_accepting_[s]));
         }
+        std::cerr << "End" << std::endl;
         
         std::vector<ranking> succ_rankings = get_succ_rankings(state.f, restr, reachable, letter, scc_index);
         get_max(succ_rankings);
@@ -196,11 +196,9 @@ namespace cola
             succ.push_back({new_state, false});
             
             std::vector<std::tuple<int, int, bool>> r;
-            int size = -1;
+            int size = scc_info_.states_of(scc_index).size();
             for (auto s : reach_succ)
             {
-                if (size < 0)
-                    size = scc_info_.states_of(scc_info_.scc_of(s)).size();
                 bool accepting = (s != -1 ? is_accepting_[s] : false);
                 r.push_back(std::make_tuple(s, 2*(size + 1), accepting));
             }

@@ -2345,12 +2345,10 @@ namespace cola
                 if (active_type or ((index[0] != (indices[(orig_index + 1) % indices.size()]))))
                 {
                   succ_na = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
-                  std::cerr << "track to active" << std::endl;
                 }
                 else
                 {
                   succ_na = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
-                  std::cerr << "track" << std::endl;
                 }
 
                 // copy new_succ[0]
