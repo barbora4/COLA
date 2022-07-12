@@ -1918,7 +1918,7 @@ namespace cola
           std::vector<complement_mstate> succ_det;
 
           if (ms.iw_break_set_.size() == 0 and ms.det_break_set_.size() == 0)
-            active_type = false;
+           active_type = false;
 
           bool iwa_done = false;
           bool det_done = false;
@@ -1977,8 +1977,9 @@ namespace cola
                 acc_edge = false;
                 iwa_done = true;
                 // getSuccActive
-                if ((not decomp_options_.tgba and ((not decomp_options_.merge_iwa and this->weaksccs_.size() + this->acc_detsccs_.size() > 1) or this->acc_detsccs_.size() > 0 or not ms.iw_break_set_.empty())) or not ms.iw_break_set_.empty())
+                if ((not decomp_options_.tgba and ((not decomp_options_.merge_iwa and (this->weaksccs_.size() + this->acc_detsccs_.size() + this->acc_nondetsccs_.size() > 1)) or (this->acc_detsccs_.size() + this->acc_nondetsccs_.size() > 0) or not ms.iw_break_set_.empty())) or not ms.iw_break_set_.empty()) // TODO
                 {
+                  std::cerr << "IW active" << std::endl;
                   auto succ_active = mh.get_succ_active(reachable, reach_track, letter, index, ms.iw_break_set_, (decomp_options_.merge_iwa or this->weaksccs_.size() == 1) and this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 0);
 
                   for (auto succ_tt : succ_active.first)
@@ -2004,7 +2005,7 @@ namespace cola
                     }
                   }
 
-                  if (succ_active.first.size() > 0)
+                  if (succ_active.second.size() == 0) // TODO 
                     active_type = false;
 
                   for (unsigned j = 0; j < new_succ.size(); j++)
@@ -2014,6 +2015,7 @@ namespace cola
                 // getSuccTrackToActive
                 else
                 {
+                  std::cerr << "IW track to active" << std::endl;
                   auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
                   for (auto succ : succ_track_to_active)
                   {
@@ -2038,6 +2040,9 @@ namespace cola
               {
                 // getSuccActive
                 // currently sampled components
+                if (ms.det_break_set_.size() == 0) // TODO
+                    active_type = false;
+                
                 std::set<unsigned> indices;
                 for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].first)
                 {
@@ -2085,8 +2090,6 @@ namespace cola
                     new_succ[0].set_active_index(-2);
                     new_succ[1].set_active_index(-2);
                   }
-                  else if (new_succ[0].det_break_set_.size() > 0) // TODO
-                    active_type = false;
                   //}
                 }
               }
@@ -2351,17 +2354,17 @@ namespace cola
                 bool to_active;
                 if (active_type or ((index[0] != (indices[(orig_index + 1) % indices.size()]))))
                 {
-                  std::cerr << "track to active" << std::endl;
-                  succ_na = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
-                  to_active = true;
-                  std::cerr << "track to active" << std::endl;
-                }
-                else
-                {
                   std::cerr << "track" << std::endl;
                   succ_na = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
                   to_active = false;
                   std::cerr << "track" << std::endl;
+                }
+                else
+                {
+                  std::cerr << "track to active" << std::endl;
+                  succ_na = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+                  to_active = true;
+                  std::cerr << "track to active" << std::endl;
                 }
 
                 // copy new_succ[0]
@@ -2408,7 +2411,6 @@ namespace cola
                     }
                   }
                 }
-                std::cerr << "Here" << std::endl;
 
                 // std::cerr << "ERROR" << std::endl;
                 // throw std::runtime_error("nondeterministic accepting sccs not supported yet");
