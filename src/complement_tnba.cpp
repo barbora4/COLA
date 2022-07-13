@@ -2342,6 +2342,7 @@ namespace cola
                           complement_mstate tmp(new_succ[j]);
                           tmp.acc_detsccs_ = new_state_track_to_active2.acc_detsccs_;
                           tmp.det_break_set_ = new_state_track_to_active2.det_break_set_;
+                          std::cerr << "hh: " << get_name(tmp) << std::endl;
                           new_state_vector.push_back(tmp);
                         }
                         new_succ[j].acc_detsccs_ = new_state_track_to_active.acc_detsccs_;
@@ -2387,7 +2388,11 @@ namespace cola
                   auto succ_tr = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
                   auto succ_tr_act = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
 
-                  unsigned count = succ_na.size();
+                  unsigned count = new_succ.size();
+                  if (count > 0 and new_succ[0].active_index_ == -2)
+                    count = 0;
+                  if (count == 2 and new_succ[1].active_index_ == -2)
+                    count = 1;
                   for (unsigned j = 0; j < count; j++)
                   {
                     if (acc_succ[j])
