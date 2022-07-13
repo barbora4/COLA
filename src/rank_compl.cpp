@@ -126,7 +126,6 @@ namespace cola
         {
             if (r2.get_max_rank() != r.get_max_rank())
             {
-                // rankings.erase(std::remove(rankings.begin(), rankings.end(), r2), rankings.end());
                 rankings_set.erase(r2);
                 continue;
             }
@@ -147,7 +146,6 @@ namespace cola
                     if (r2[s] > r[state])
                     {
                         skip = true;
-                        // rankings.erase(std::remove(rankings.begin(), rankings.end(), r2), rankings.end());
                         rankings_set.erase(r2);
                         break;
                     }
@@ -176,9 +174,6 @@ namespace cola
                 }
             }
         }
-
-        for (auto r : rankings_set)
-            std::cerr << r.get_name() << " -> " << r.get_max_rank() << std::endl;
 
         return std::vector<ranking>(rankings_set.begin(), rankings_set.end());
     }
@@ -224,7 +219,7 @@ namespace cola
             {
                 rank_state s;
                 s.f = maxrank[0];
-                s.track = false; // TODO
+                s.track = false; 
                 succ.push_back({s, false});
             }
         }
@@ -429,24 +424,18 @@ namespace cola
                     if (not one_scc)
                     {
                         rank_state tmp;
-                        tmp.track = false; // TODO
+                        tmp.track = false; 
                         tmp.f = s.f;
                         succ.push_back({tmp, true});
                     }
                     else
                     {
-                        // std::vector<std::pair<rank_state, bool>> ret = get_succ_track_to_active(reachable, state, letter, scc_index);
-
-                        // if (ret.size() > 0)
-                        //    succ.push_back({ret[0].first, true});
-
                         succ.push_back({s, true});
                     }
                 }
             }
         }
 
-        std::cerr << "succ size nac: " << succ.size() << std::endl;
         return succ;
     }
 }

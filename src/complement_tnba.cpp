@@ -1528,25 +1528,17 @@ namespace cola
         if (is_accepting_weakscc(scc_types_, i))
         {
           weaksccs_.push_back(i);
-          std::cerr << "IW: " << i << std::endl;
         }
         else if (is_accepting_detscc(scc_types_, i))
         {
           acc_detsccs_.push_back(i);
-          std::cerr << "DET: " << i << std::endl;
         }
         else if (is_accepting_nondetscc(scc_types_, i))
         {
           // accepting nondeterministic scc
           acc_nondetsccs_.emplace_back(i);
-          std::cerr << "NAC: " << i << std::endl;
         }
       }
-
-      // std::cerr << "SCCs: " << acc_detsccs_.size() + weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", IWA: " << weaksccs_.size() << ", N: " << acc_nondetsccs_.size() << std::endl << std::endl;
-
-      // if (acc_nondetsccs_.size() > 0)
-      //   throw std::runtime_error("nondeterministic accepting sccs not supported yet");
     }
 
     unsigned
@@ -1681,7 +1673,7 @@ namespace cola
         if (index != active_index or si_.scc_of(orig_init) != active_index)
         {
           rank_state tmp;
-          tmp.reachable.insert(-1); // TODO check predecessors
+          tmp.reachable.insert(-1); 
           na_sccs.push_back(tmp);
         }
         else
@@ -1776,7 +1768,7 @@ namespace cola
 
       get_initial_state(init_state, active_index, orig_init, iw_sccs, acc_detsccs, na_sccs);
 
-      std::cerr << "Initial: " << get_name(init_state) << std::endl;
+      // std::cerr << "Initial: " << get_name(init_state) << std::endl;
       auto init = new_state(init_state);
       res_->set_init_state(init);
 
@@ -1801,8 +1793,7 @@ namespace cola
         if (ms.active_index_ == -1)
           continue;
 
-        std::cerr << std::endl
-                  << "State: " << get_name(ms) << std::endl;
+        // std::cerr << std::endl << "State: " << get_name(ms) << std::endl;
         active_index = ms.active_index_;
 
         // skip nonaccepting sccs
@@ -1853,7 +1844,7 @@ namespace cola
         {
           bdd letter = bdd_satoneset(all, msupport, bddfalse);
           all -= letter;
-          std::cerr << "Current symbol: " << letter << std::endl;
+          // std::cerr << "Current symbol: " << letter << std::endl;
 
           std::set<unsigned> all_succ = mh.get_all_successors(reachable, letter);
 
@@ -1977,9 +1968,8 @@ namespace cola
                 acc_edge = false;
                 iwa_done = true;
                 // getSuccActive
-                if ((not decomp_options_.tgba and ((not decomp_options_.merge_iwa and (this->weaksccs_.size() + this->acc_detsccs_.size() + this->acc_nondetsccs_.size() > 1)) or (this->acc_detsccs_.size() + this->acc_nondetsccs_.size() > 0) or not ms.iw_break_set_.empty())) or not ms.iw_break_set_.empty()) // TODO
+                if ((not decomp_options_.tgba and ((not decomp_options_.merge_iwa and (this->weaksccs_.size() + this->acc_detsccs_.size() + this->acc_nondetsccs_.size() > 1)) or (this->acc_detsccs_.size() + this->acc_nondetsccs_.size() > 0) or not ms.iw_break_set_.empty())) or not ms.iw_break_set_.empty()) 
                 {
-                  std::cerr << "IW active" << std::endl;
                   auto succ_active = mh.get_succ_active(reachable, reach_track, letter, index, ms.iw_break_set_, (decomp_options_.merge_iwa or this->weaksccs_.size() == 1) and this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 0);
 
                   for (auto succ_tt : succ_active.first)
@@ -2005,7 +1995,7 @@ namespace cola
                     }
                   }
 
-                  if (succ_active.second.size() == 0) // TODO
+                  if (succ_active.second.size() == 0) 
                     active_type = false;
 
                   for (unsigned j = 0; j < new_succ.size(); j++)
@@ -2015,7 +2005,6 @@ namespace cola
                 // getSuccTrackToActive
                 else
                 {
-                  std::cerr << "IW track to active" << std::endl;
                   auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
                   for (auto succ : succ_track_to_active)
                   {
@@ -2040,7 +2029,7 @@ namespace cola
               {
                 // getSuccActive
                 // currently sampled components
-                if (ms.det_break_set_.size() == 0) // TODO
+                if (ms.det_break_set_.size() == 0) 
                   active_type = false;
 
                 std::set<unsigned> indices;
@@ -2070,8 +2059,6 @@ namespace cola
                   for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].first)
                   {
                     ranks.push_back({s, NCSB_C});
-                    // if (not active_type)
-                    //   ranks.push_back({s, NCSB_B});
                   }
                   for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].second)
                   {
@@ -2083,21 +2070,7 @@ namespace cola
                     ranks.push_back({s, NCSB_B});
                   }
 
-                  // if (active_type)
-                  //{
-                  //   for (auto s : ms.det_break_set_)
-                  //   {
-                  //     ranks.push_back({s, NCSB_B});
-                  //   }
-
                   succ_det = get_succ_active_CSB((ms.det_break_set_.empty()) ? std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()) : reach_track, letter, ranks, i, new_succ[0], new_succ[1], acc_det_succ, true_index - iw_succ.size());
-                  std::cerr << "succ active: " << succ_det.size() << std::endl;
-                  //}
-
-                  // else
-                  //{
-                  //   succ_det = get_succ_track_CSB(reachable, letter, ranks, i, new_succ[0], new_succ[1], acc_det_succ, true_index - iw_succ.size()); // continue
-                  // }
 
                   if (succ_det.empty())
                   {
@@ -2111,7 +2084,6 @@ namespace cola
               {
                 // nondet accepting scc
                 unsigned i = true_index - iw_succ.size() - acc_det_succ.size();
-                std::cerr << (ms.na_sccs_[i].track ? "waiting" : "tight") << std::endl;
 
                 succ_na = rank_compl.get_succ_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, this->weaksccs_.size() == 0 and this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 1, index[0]);
 
@@ -2139,16 +2111,12 @@ namespace cola
                   new_succ[j].na_sccs_[i] = succ_na[j].first;
                   acc_succ.push_back(succ_na[j].second);
                 }
-
-                // std::cerr << "ERROR" << std::endl;
-                // throw std::runtime_error("nondeterministic accepting sccs not supported yet");
               }
             }
 
             // non-active component
             else
             {
-              std::cerr << "Here " << index[0] << std::endl;
               // non-active scc
               if (is_weakscc(scc_types_, index[0]))
               {
@@ -2324,17 +2292,14 @@ namespace cola
                       new_state_track_to_active2.set_active_index(-2);
                     }
                   }
-                  std::cerr << "Begin" << std::endl;
-                  std::cerr << succ_na.size() << " " << acc_succ.size() << " " << new_succ.size() << std::endl;
 
                   std::vector<complement_mstate> new_state_vector;
                   unsigned count = (new_succ.size() < acc_succ.size() ? new_succ.size() : acc_succ.size());
-                  for (unsigned j = 0; j < count; j++) // TODO
+                  for (unsigned j = 0; j < count; j++) 
                   {
                     if (acc_succ[j])
                     {
                       // track to active
-                      std::cerr << "det track to active" << std::endl;
                       if (new_state_track_to_active.active_index_ != -2)
                       {
                         if (new_state_track_to_active2.active_index_ != -2)
@@ -2342,7 +2307,6 @@ namespace cola
                           complement_mstate tmp(new_succ[j]);
                           tmp.acc_detsccs_ = new_state_track_to_active2.acc_detsccs_;
                           tmp.det_break_set_ = new_state_track_to_active2.det_break_set_;
-                          std::cerr << "hh: " << get_name(tmp) << std::endl;
                           new_state_vector.push_back(tmp);
                         }
                         new_succ[j].acc_detsccs_ = new_state_track_to_active.acc_detsccs_;
@@ -2354,17 +2318,14 @@ namespace cola
                     else
                     {
                       // track
-                      std::cerr << "det track" << std::endl;
                       if (new_state_track.active_index_ != -2)
                       {
                         new_succ[j].acc_detsccs_ = new_state_track.acc_detsccs_;
-                        // new_succ[j].det_break_set_ = new_state_track.det_break_set_;
                       }
                       else
                         new_succ[j].active_index_ = -2;
                     }
                   }
-                  std::cerr << "End" << std::endl;
 
                   for (auto s : new_state_vector)
                     new_succ.push_back(s);
@@ -2374,7 +2335,6 @@ namespace cola
               else
               {
                 // nondet accepting scc
-                std::cerr << "Here" << std::endl;
                 unsigned i = true_index - iw_succ.size() - acc_det_succ.size();
 
                 //std::vector<std::pair<rank_state, bool>> succ_na;
@@ -2436,17 +2396,11 @@ namespace cola
                 {
                   if (not to_active)
                   {
-                    std::cerr << "track" << std::endl;
                     succ_na = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
-                    to_active = false;
-                    std::cerr << "track" << std::endl;
                   }
                   else
                   {
-                    std::cerr << "track to active" << std::endl;
                     succ_na = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
-                    to_active = true;
-                    std::cerr << "track to active" << std::endl;
                   }
 
                   // copy new_succ[0]
@@ -2494,9 +2448,6 @@ namespace cola
                     }
                   }
                 }
-
-                // std::cerr << "ERROR" << std::endl;
-                // throw std::runtime_error("nondeterministic accepting sccs not supported yet");
               }
             }
           }
@@ -2508,7 +2459,7 @@ namespace cola
               active_type = true;
               if ((is_weakscc(scc_types_, active_index) and ms.iw_break_set_.size() == 0) or (not is_weakscc(scc_types_, active_index) and is_accepting_detscc(scc_types_, active_index) and ms.det_break_set_.size() == 0))
                 active_type = false;
-              if (decomp_options_.tgba and (not is_weakscc(scc_types_, active_index) and is_accepting_detscc(scc_types_, active_index) and ms.det_break_set_.size() == 0)) // TODO
+              if (decomp_options_.tgba and (not is_weakscc(scc_types_, active_index) and is_accepting_detscc(scc_types_, active_index) and ms.det_break_set_.size() == 0)) 
                 active_type = false;
               if ((not is_weakscc(scc_types_, active_index)) and (not is_accepting_detscc(scc_types_, active_index)) and acc_succ[i])
                 active_type = false;
@@ -2617,7 +2568,7 @@ namespace cola
                 new_succ[i].det_break_set_ = result;
               }
 
-              std::cerr << "New succ: " << get_name(new_succ[i]) << std::endl;
+              // std::cerr << "New succ: " << get_name(new_succ[i]) << std::endl;
               if (std::find(all_states.begin(), all_states.end(), new_succ[i]) == all_states.end())
               {
                 all_states.push_back(new_succ[i]);
@@ -2628,12 +2579,10 @@ namespace cola
               if (active_type and not acc_edge)
               {
                 res_->new_edge(top.second, p.first->second, letter);
-                std::cerr << "Nonaccepting" << std::endl;
               }
               else
               {
                 res_->new_edge(top.second, p.first->second, letter, {0});
-                std::cerr << "Accepting" << std::endl;
               }
 
               if (decomp_options_.tgba and ms.iw_break_set_.size() == 0)
