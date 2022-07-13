@@ -2376,7 +2376,7 @@ namespace cola
                 std::cerr << "Here" << std::endl;
                 unsigned i = true_index - iw_succ.size() - acc_det_succ.size();
 
-                std::vector<std::pair<rank_state, bool>> succ_na;
+                //std::vector<std::pair<rank_state, bool>> succ_na;
                 bool to_active;
 
                 to_active = not(active_type or ((index[0] != (indices[(orig_index + 1) % indices.size()]))));
@@ -2415,7 +2415,7 @@ namespace cola
                       if (succ_tr.size() > 0)
                       {
                         new_succ[j].na_sccs_[i] = succ_tr[0].first;
-                        for (unsigned k = 1; k < succ_tr_act.size(); k++)
+                        for (unsigned k = 1; k < succ_tr.size(); k++)
                         {
                           complement_mstate tmp(new_succ[j]);
                           tmp.na_sccs_[i] = succ_tr[k].first;
