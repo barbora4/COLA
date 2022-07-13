@@ -339,7 +339,7 @@ namespace cola
                 }
 
                 // eta 4
-                if (state.i != 0)
+                if (state.i != state.f.get_max_rank() - 1)
                 {
                     rank_state new_state;
 
@@ -396,15 +396,18 @@ namespace cola
                     }
                     else
                     {
-                        std::vector<std::pair<rank_state, bool>> ret = get_succ_track_to_active(reachable, state, letter, scc_index);
+                        // std::vector<std::pair<rank_state, bool>> ret = get_succ_track_to_active(reachable, state, letter, scc_index);
 
-                        if (ret.size() > 0)
-                            succ.push_back({ret[0].first, true});
+                        // if (ret.size() > 0)
+                        //    succ.push_back({ret[0].first, true});
+                        
+                        succ.push_back({s, true});
                     }
                 }
             }
         }
 
+        std::cerr << "succ size nac: " << succ.size() << std::endl;
         return succ;
     }
 }

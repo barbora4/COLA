@@ -2070,8 +2070,8 @@ namespace cola
                   for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].first)
                   {
                     ranks.push_back({s, NCSB_C});
-                    //if (not active_type)
-                    //  ranks.push_back({s, NCSB_B});
+                    // if (not active_type)
+                    //   ranks.push_back({s, NCSB_B});
                   }
                   for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].second)
                   {
@@ -2083,21 +2083,21 @@ namespace cola
                     ranks.push_back({s, NCSB_B});
                   }
 
-                  //if (active_type)
+                  // if (active_type)
                   //{
-                  //  for (auto s : ms.det_break_set_)
-                  //  {
-                  //    ranks.push_back({s, NCSB_B});
-                  //  }
+                  //   for (auto s : ms.det_break_set_)
+                  //   {
+                  //     ranks.push_back({s, NCSB_B});
+                  //   }
 
-                    succ_det = get_succ_active_CSB((ms.det_break_set_.empty()) ? std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()) : reach_track, letter, ranks, i, new_succ[0], new_succ[1], acc_det_succ, true_index - iw_succ.size());
-                    std::cerr << "succ active: " << succ_det.size() << std::endl;
+                  succ_det = get_succ_active_CSB((ms.det_break_set_.empty()) ? std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()) : reach_track, letter, ranks, i, new_succ[0], new_succ[1], acc_det_succ, true_index - iw_succ.size());
+                  std::cerr << "succ active: " << succ_det.size() << std::endl;
                   //}
 
-                  //else
+                  // else
                   //{
-                  //  succ_det = get_succ_track_CSB(reachable, letter, ranks, i, new_succ[0], new_succ[1], acc_det_succ, true_index - iw_succ.size()); // continue
-                  //}
+                  //   succ_det = get_succ_track_CSB(reachable, letter, ranks, i, new_succ[0], new_succ[1], acc_det_succ, true_index - iw_succ.size()); // continue
+                  // }
 
                   if (succ_det.empty())
                   {
@@ -2357,7 +2357,7 @@ namespace cola
                       if (new_state_track.active_index_ != -2)
                       {
                         new_succ[j].acc_detsccs_ = new_state_track.acc_detsccs_;
-                        //new_succ[j].det_break_set_ = new_state_track.det_break_set_;
+                        // new_succ[j].det_break_set_ = new_state_track.det_break_set_;
                       }
                       else
                         new_succ[j].active_index_ = -2;
@@ -2378,62 +2378,116 @@ namespace cola
 
                 std::vector<std::pair<rank_state, bool>> succ_na;
                 bool to_active;
-                if (active_type or ((index[0] != (indices[(orig_index + 1) % indices.size()]))))
-                {
-                  std::cerr << "track" << std::endl;
-                  succ_na = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
-                  to_active = false;
-                  std::cerr << "track" << std::endl;
-                }
-                else
-                {
-                  std::cerr << "track to active" << std::endl;
-                  succ_na = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
-                  to_active = true;
-                  std::cerr << "track to active" << std::endl;
-                }
 
-                // copy new_succ[0]
-                if (succ_na.size() == 0)
-                {
-                  new_succ[0].set_active_index(-2);
-                  new_succ[1].set_active_index(-2);
-                }
+                to_active = not(active_type or ((index[0] != (indices[(orig_index + 1) % indices.size()]))));
 
-                if (to_active)
+                if (std::find(this->acc_nondetsccs_.begin(), this->acc_nondetsccs_.end(), indices[orig_index]) != this->acc_nondetsccs_.end())
                 {
-                  if (succ_na.size() == 1)
-                    new_succ[1].set_active_index(-2);
-                  new_succ.pop_back();
+                  // active component was acc nondet
+                  // TODO CONTINUE HERE !!!!!!!!!!!
 
-                  complement_mstate tmp_state(new_succ[0]);
-                  for (unsigned j = 0; j < succ_na.size(); j++)
+                  auto succ_tr = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+                  auto succ_tr_act = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+
+                  unsigned count = succ_na.size();
+                  for (unsigned j = 0; j < count; j++)
                   {
-                    if (j != 0)
+                    if (acc_succ[j])
                     {
-                      complement_mstate new_state(tmp_state);
-                      new_succ.push_back(new_state);
+                      // track to active
+                      if (succ_tr_act.size() > 0)
+                      {
+                        new_succ[j].na_sccs_[i] = succ_tr_act[0].first;
+                        for (unsigned k = 1; k < succ_tr_act.size(); k++)
+                        {
+                          complement_mstate tmp(new_succ[j]);
+                          tmp.na_sccs_[i] = succ_tr_act[k].first;
+                          new_succ.push_back(tmp);
+                          acc_succ.push_back(acc_succ[j]);
+                        }
+                      }
+                      else
+                        new_succ[j].active_index_ = -2;
                     }
-                    new_succ[j].na_sccs_[i] = succ_na[j].first;
-                    acc_succ.push_back(succ_na[j].second);
+                    else
+                    {
+                      // track
+                      if (succ_tr.size() > 0)
+                      {
+                        new_succ[j].na_sccs_[i] = succ_tr[0].first;
+                        for (unsigned k = 1; k < succ_tr_act.size(); k++)
+                        {
+                          complement_mstate tmp(new_succ[j]);
+                          tmp.na_sccs_[i] = succ_tr[k].first;
+                          new_succ.push_back(tmp);
+                          acc_succ.push_back(acc_succ[j]);
+                        }
+                      }
+                      else
+                        new_succ[j].active_index_ = -2;
+                    }
                   }
                 }
 
                 else
                 {
-                  complement_mstate tmp_state(new_succ[0]);
-                  unsigned count = new_succ.size();
-                  for (unsigned k = 0; k < count; k++)
+                  if (not to_active)
                   {
+                    std::cerr << "track" << std::endl;
+                    succ_na = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+                    to_active = false;
+                    std::cerr << "track" << std::endl;
+                  }
+                  else
+                  {
+                    std::cerr << "track to active" << std::endl;
+                    succ_na = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+                    to_active = true;
+                    std::cerr << "track to active" << std::endl;
+                  }
+
+                  // copy new_succ[0]
+                  if (succ_na.size() == 0)
+                  {
+                    new_succ[0].set_active_index(-2);
+                    new_succ[1].set_active_index(-2);
+                  }
+
+                  if (to_active)
+                  {
+                    if (succ_na.size() == 1)
+                      new_succ[1].set_active_index(-2);
+                    new_succ.pop_back();
+
+                    complement_mstate tmp_state(new_succ[0]);
                     for (unsigned j = 0; j < succ_na.size(); j++)
                     {
                       if (j != 0)
                       {
-                        complement_mstate new_state(new_succ[k]);
+                        complement_mstate new_state(tmp_state);
                         new_succ.push_back(new_state);
                       }
-                      new_succ[k + j].na_sccs_[i] = succ_na[j].first;
-                      acc_succ.push_back(false);
+                      new_succ[j].na_sccs_[i] = succ_na[j].first;
+                      acc_succ.push_back(succ_na[j].second);
+                    }
+                  }
+
+                  else
+                  {
+                    complement_mstate tmp_state(new_succ[0]);
+                    unsigned count = new_succ.size();
+                    for (unsigned k = 0; k < count; k++)
+                    {
+                      for (unsigned j = 0; j < succ_na.size(); j++)
+                      {
+                        if (j != 0)
+                        {
+                          complement_mstate new_state(new_succ[k]);
+                          new_succ.push_back(new_state);
+                        }
+                        new_succ[k + j].na_sccs_[i] = succ_na[j].first;
+                        acc_succ.push_back(false);
+                      }
                     }
                   }
                 }
