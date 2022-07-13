@@ -36,6 +36,7 @@ namespace cola
             }
 
             std::set<unsigned> get_all_successors(std::set<unsigned> current_states, bdd symbol);
+            std::set<int> get_all_successors_acc(std::set<unsigned> current_states, bdd symbol, unsigned scc_index);
             std::set<int> get_successors_with_box(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index);
 
             void get_max(std::vector<ranking>& rankings);

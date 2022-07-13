@@ -2384,8 +2384,6 @@ namespace cola
                 if (std::find(this->acc_nondetsccs_.begin(), this->acc_nondetsccs_.end(), indices[orig_index]) != this->acc_nondetsccs_.end())
                 {
                   // active component was acc nondet
-                  // TODO CONTINUE HERE !!!!!!!!!!!
-
                   auto succ_tr = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
                   auto succ_tr_act = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
 
