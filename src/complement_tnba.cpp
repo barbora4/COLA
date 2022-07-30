@@ -1868,7 +1868,7 @@ namespace cola
 
           // iw succ
           std::vector<std::vector<unsigned>> iw_succ(ms.iw_sccs_.size());
-          if (decomp_options_.merge_iwa)
+          if (decomp_options_.merge_iwa or iw_succ.size() == 0)
           {
             iw_succ.clear();
             iw_succ.push_back(std::vector<unsigned>());
@@ -2611,19 +2611,6 @@ namespace cola
   spot::twa_graph_ptr
   complement_tnba(const spot::twa_graph_ptr &aut, spot::option_map &om, compl_decomp_options decomp_options)
   {
-    // // TEST -----------------------------------------------------------------------------------------------
-    // std::vector<std::tuple<unsigned, int, bool>> mp;
-    // for (unsigned i=0; i<5; i++)
-    // {
-    //   if (i == 2 or i == 4)
-    //     mp.push_back(std::make_tuple(i, 10, true));
-    //   else
-    //     mp.push_back(std::make_tuple(i, 10, false));
-    // }
-    // get_tight_rankings(mp);
-    // std::cerr << std::endl;
-    // // END TEST -------------------------------------------------------------------------------------------
-
     const int trans_pruning = om.get(NUM_TRANS_PRUNING);
     // now we compute the simulator
     spot::twa_graph_ptr aut_reduced;
