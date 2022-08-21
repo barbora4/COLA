@@ -2207,7 +2207,7 @@ namespace cola
                       iw_succ2[0] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
                     else
                       iw_succ2[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
-                    
+
                     break_set = std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end());
                   }
 
@@ -2648,6 +2648,58 @@ namespace cola
     }
   };
 
+  bool
+  all_trans_acc(const spot::twa_graph_ptr &aut, unsigned current_state, unsigned scc, spot::scc_info si)
+  {
+    auto current_scc = si.scc_of(current_state);
+
+    for (auto &t : aut->out(current_state))
+    {
+      if (si.scc_of(t.dst) == current_scc)
+      {
+        if (not t.acc)
+          return false;
+      }
+    }
+
+    return true;
+  }
+
+  spot::twa_graph_ptr
+  saturation(const spot::twa_graph_ptr &aut, spot::scc_info si)
+  { 
+    bool change;
+    for (unsigned i = 0; i < si.scc_count(); i++)
+    {
+      do
+      {
+        change = false;
+        for (auto state : si.states_of(i))
+        {
+          if (all_trans_acc(aut, state, i, si))
+          {
+            for (auto s : si.states_of(i))
+            {
+              for (auto &t : aut->out(s))
+              {
+                if (t.dst == state)
+                {
+                  if (not t.acc)
+                  {
+                    t.acc = spot::acc_cond::mark_t{0};
+                    change = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+      } while (change);
+    }
+
+    return aut;
+  }
+
   spot::twa_graph_ptr
   complement_tnba(const spot::twa_graph_ptr &aut, spot::option_map &om, compl_decomp_options decomp_options)
   {
@@ -2690,6 +2742,15 @@ namespace cola
           // complement each automaton
           auto aut_preprocessed = p.run(aut);
           spot::scc_info part_scc(aut_preprocessed, spot::scc_info_options::ALL);
+
+          // saturation
+          if (decomp_options.sat)
+          {
+            aut_preprocessed = saturation(aut_preprocessed, part_scc); 
+            spot::scc_info scc_sat(aut_preprocessed, spot::scc_info_options::ALL);
+            part_scc = scc_sat;
+          }
+
           auto comp = cola::tnba_complement(aut_preprocessed, part_scc, om, implications, decomp_options);
           auto dec_aut = comp.run();
           // postprocessing for each automaton
@@ -2712,6 +2773,14 @@ namespace cola
 
         return result;
       }
+    }
+
+    // saturation
+    if (decomp_options.sat)
+    {
+      aut_reduced = saturation(aut_reduced, scc);
+      spot::scc_info scc_sat(aut_reduced, spot::scc_info_options::ALL);
+      scc = scc_sat;
     }
 
     spot::const_twa_graph_ptr aut_to_compl;

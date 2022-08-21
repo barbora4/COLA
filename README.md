@@ -50,9 +50,11 @@ To output a complement automaton, use ```./cola --algo=cola filename --complemen
 Complementation using decomposition: ```./cola --algo=comp [options] filename```
 
 Options:
-* ```--merge-iwa``` - merge all IWA SCCs
-* ```--merge-det``` - merge all deterministic SCCs
-* ```--verbose=1``` - outputs state names for debugging
-* ```--tgba``` - outputs a TGBA with two colours
-* ```--iw-sim``` - simulation on IWA SCCs
-* ```--scc-compl``` - complementation for each SCC separately
+* ```--merge-iwa``` - Merge all IWA SCCs
+* ```--merge-det``` - Merge all deterministic SCCs
+* ```--tgba``` - Outputs a TGBA with two colours
+* ```--iw-sim``` - Simulation on IWA SCCs
+* ```--det-sim``` - Simulation on DET SCCs
+* ```--scc-compl``` - Complementation for each SCC separately
+* ```--scc-high``` - SCC compl with high postprocessing before intersection
+* ```--no-sat``` - No saturation of accepting states/transitions

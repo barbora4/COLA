@@ -105,6 +105,7 @@ Decomposition-based complementation:
     --det-sim             Simulation on DET SCCs
     --scc-compl           Complementation for each SCC separately
     --scc-high            SCC compl with high postprocessing before intersection
+    --no-sat              No saturation of accepting states/transitions
 
 Pre- and Post-processing:
     --preprocess=[0|1|2|3]       Level for simplifying the input automaton (default=1)
@@ -499,6 +500,10 @@ int main(int argc, char *argv[])
     else if (arg == "--scc-high")
     {
       decomp_options.scc_compl_high = true;
+    }
+    else if (arg == "--no-sat")
+    {
+      decomp_options.sat = false;
     }
     else if (arg == "-f")
     {
