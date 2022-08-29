@@ -55,6 +55,7 @@ src_libcola_la_SOURCES =			\
   src/rankings.hpp        \
   src/rankings.cpp        \
   src/rank_compl.hpp      \
-  src/rank_compl.cpp
+  src/rank_compl.cpp      \
+  src/dataflow.hpp
 
 cola_SOURCES = src/main.cpp

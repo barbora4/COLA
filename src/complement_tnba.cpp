@@ -592,7 +592,7 @@ namespace cola
     // Show Rank states in state name to help debug
     bool show_names_;
 
-    // maximal ranking in a labelling
+    std::map<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned> rank_bounds_; // TODO
 
     std::string
     get_det_string(const std::vector<state_rank> &states)
@@ -1884,7 +1884,7 @@ namespace cola
           std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_det_succ;
           if (not decomp_options_.merge_det)
           {
-            for (unsigned i = 0; i < ms.acc_detsccs_.size(); i++)
+            for (unsigned i = 0; i < this->acc_detsccs_.size(); i++)
             {
               acc_det_succ.push_back({std::vector<unsigned>(), std::vector<unsigned>()});
             }
@@ -2083,7 +2083,7 @@ namespace cola
                   }
 
                   succ_det = get_succ_active_CSB((ms.det_break_set_.empty()) ? std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()) : reach_track, letter, ranks, i, new_succ[0], new_succ[1], acc_det_succ, true_index - iw_succ.size());
-                  if (ms.det_break_set_.empty() and not decomp_options_.merge_det)
+                  if (ms.det_break_set_.empty() and (not decomp_options_.merge_det and this->acc_detsccs_.size() > 1))
                   {
                     new_succ[0].det_break_set_.clear();
                     new_succ[1].det_break_set_.clear();
@@ -2101,7 +2101,7 @@ namespace cola
               {
                 // nondet accepting scc
                 unsigned i = true_index - iw_succ.size() - acc_det_succ.size();
-
+ 
                 succ_na = rank_compl.get_succ_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, this->weaksccs_.size() == 0 and this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 1, index[0]);
 
                 // copy new_succ[0]
@@ -2111,7 +2111,9 @@ namespace cola
                   new_succ[1].set_active_index(-2);
                 }
                 if (succ_na.size() == 1)
+                {
                   new_succ[1].set_active_index(-2);
+                }
                 // new_succ.pop_back();
 
                 complement_mstate tmp_state(new_succ[0]);
@@ -2120,13 +2122,17 @@ namespace cola
                   if (j != 0)
                   {
                     complement_mstate new_state(tmp_state);
-                    if (j == 1)
+                    if (j < new_succ.size())
                       new_succ[j] = new_state;
                     else
                       new_succ.push_back(new_state);
                   }
                   new_succ[j].na_sccs_[i] = succ_na[j].first;
                   acc_succ.push_back(succ_na[j].second);
+                }
+                if (succ_na.size() == 1)
+                {
+                  acc_succ.push_back(false);
                 }
               }
             }
@@ -2333,6 +2339,12 @@ namespace cola
 
                   std::vector<complement_mstate> new_state_vector;
                   unsigned count = (new_succ.size() < acc_succ.size() ? new_succ.size() : acc_succ.size());
+
+                  // for (int j = 0; j < acc_succ.size() - new_succ.size(); j++)
+                  // {
+                  //   new_succ.push_back(new_succ[0]);
+                  // }
+
                   for (unsigned j = 0; j < count; j++)
                   {
                     if (acc_succ[j])

@@ -73,6 +73,7 @@ struct compl_decomp_options
   bool scc_compl_high = false;
   bool dir_sim = true;
   bool sat = true;
+  bool dataflow = false;
 };
 
 namespace cola

@@ -106,6 +106,7 @@ Decomposition-based complementation:
     --scc-compl           Complementation for each SCC separately
     --scc-high            SCC compl with high postprocessing before intersection
     --no-sat              No saturation of accepting states/transitions
+    --dataflow            Data flow analysis in rank-based complementation
 
 Pre- and Post-processing:
     --preprocess=[0|1|2|3]       Level for simplifying the input automaton (default=1)
@@ -504,6 +505,10 @@ int main(int argc, char *argv[])
     else if (arg == "--no-sat")
     {
       decomp_options.sat = false;
+    }
+    else if (arg == "--dataflow")
+    {
+      decomp_options.dataflow = true;
     }
     else if (arg == "-f")
     {
