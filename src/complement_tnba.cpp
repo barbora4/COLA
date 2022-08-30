@@ -2347,7 +2347,7 @@ namespace cola
 
                   for (unsigned j = 0; j < count; j++)
                   {
-                    if (acc_succ[j])
+                    if (acc_succ[j] and true_index == (orig_index + 1) % indices.size())
                     {
                       // track to active
                       if (new_state_track_to_active.active_index_ != -2)
