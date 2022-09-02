@@ -2735,6 +2735,14 @@ namespace cola
 
     if (decomp_options.scc_compl)
     {
+      // saturation
+      if (decomp_options.sat)
+      {
+        aut_reduced = saturation(aut_reduced, scc);
+        spot::scc_info scc_sat(aut_reduced, spot::scc_info_options::ALL);
+        scc = scc_sat;
+      }
+
       // decompose source automaton
       cola::decomposer decomp(aut_reduced, om);
       auto decomposed = decomp.run(true, decomp_options.merge_iwa, decomp_options.merge_det);
@@ -2755,13 +2763,13 @@ namespace cola
           auto aut_preprocessed = p.run(aut);
           spot::scc_info part_scc(aut_preprocessed, spot::scc_info_options::ALL);
 
-          // saturation
-          if (decomp_options.sat)
-          {
-            aut_preprocessed = saturation(aut_preprocessed, part_scc); 
-            spot::scc_info scc_sat(aut_preprocessed, spot::scc_info_options::ALL);
-            part_scc = scc_sat;
-          }
+          // // saturation
+          // if (decomp_options.sat)
+          // {
+          //   aut_preprocessed = saturation(aut_preprocessed, part_scc); 
+          //   spot::scc_info scc_sat(aut_preprocessed, spot::scc_info_options::ALL);
+          //   part_scc = scc_sat;
+          // }
 
           auto comp = cola::tnba_complement(aut_preprocessed, part_scc, om, implications, decomp_options);
           auto dec_aut = comp.run();
@@ -2785,14 +2793,6 @@ namespace cola
 
         return result;
       }
-    }
-
-    // saturation
-    if (decomp_options.sat)
-    {
-      aut_reduced = saturation(aut_reduced, scc);
-      spot::scc_info scc_sat(aut_reduced, spot::scc_info_options::ALL);
-      scc = scc_sat;
     }
 
     spot::const_twa_graph_ptr aut_to_compl;
