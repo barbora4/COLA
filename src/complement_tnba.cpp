@@ -17,6 +17,8 @@
 
 //#include "optimizer.hpp"
 #include "cola.hpp"
+#include "complement_mstate.hpp"
+#include "complement_class.hpp"
 #include "simulation.hpp"
 #include "types.hpp"
 //#include "struct.hpp"
@@ -24,6 +26,9 @@
 #include "mh_compl.hpp"
 #include "rankings.hpp"
 #include "rank_compl.hpp"
+#include "complement_mh.hpp"
+#include "complement_ncsb.hpp"
+#include "complement_rank.hpp"
 
 #include <deque>
 #include <map>
@@ -61,332 +66,6 @@ namespace cola
   const int NCSB_C = 2;
   const int NCSB_S = 4;
   const int NCSB_B = 3;
-
-  enum slice_mark
-  {
-    None = -1,
-    Inf = 0,
-    New = 1,
-    Fin = 2
-  };
-
-  class complement_mstate
-  {
-  public:
-    // the number of states num, default values, and number of NACs
-    complement_mstate(spot::scc_info &si, unsigned num_det_sccs)
-        : si_(si)
-    {
-      for (unsigned i = 0; i < num_det_sccs; i++)
-      {
-        detscc_ranks_.emplace_back(std::vector<state_rank>());
-      }
-    }
-
-    complement_mstate(const complement_mstate &other)
-        : si_(other.si_)
-    {
-      this->break_set_.clear();
-      this->break_set_.insert(other.break_set_.begin(), other.break_set_.end());
-      this->weak_set_.clear();
-      this->weak_set_.insert(other.weak_set_.begin(), other.weak_set_.end());
-
-      this->detscc_ranks_.clear();
-      for (unsigned i = 0; i < other.detscc_ranks_.size(); i++)
-      {
-        std::vector<state_rank> copy = other.detscc_ranks_[i];
-        this->detscc_ranks_.emplace_back(copy);
-      }
-
-      this->nondetscc_ranks_.clear();
-      this->nondetscc_marks_.clear();
-      for (unsigned i = 0; i < other.nondetscc_ranks_.size(); i++)
-      {
-        std::set<unsigned> copy = other.nondetscc_ranks_[i];
-        this->nondetscc_ranks_.emplace_back(copy);
-        this->nondetscc_marks_.push_back(other.nondetscc_marks_[i]);
-      }
-
-      this->set_iw_sccs(other.iw_sccs_);
-      this->set_iw_break_set(other.iw_break_set_);
-      this->det_break_set_ = other.det_break_set_;
-      this->set_active_index(other.active_index_);
-      this->set_acc_detsccs(other.acc_detsccs_);
-      this->curr_reachable_ = other.curr_reachable_;
-
-      this->na_sccs_ = other.na_sccs_;
-    }
-
-    std::set<unsigned>
-    get_reach_set() const;
-
-    std::set<unsigned>
-    get_weak_set() const;
-
-    bool is_empty() const;
-
-    int get_max_rank() const;
-
-    bool operator<(const complement_mstate &other) const;
-    bool operator==(const complement_mstate &other) const;
-
-    complement_mstate &
-    operator=(const complement_mstate &other)
-    {
-      this->si_ = other.si_;
-      this->break_set_.clear();
-      this->break_set_.insert(other.break_set_.begin(), other.break_set_.end());
-      this->weak_set_.clear();
-      this->weak_set_.insert(other.weak_set_.begin(), other.weak_set_.end());
-
-      this->detscc_ranks_.clear();
-      for (unsigned i = 0; i < other.detscc_ranks_.size(); i++)
-      {
-        std::vector<state_rank> copy = other.detscc_ranks_[i];
-        this->detscc_ranks_.emplace_back(copy);
-      }
-
-      this->nondetscc_ranks_.clear();
-      this->nondetscc_marks_.clear();
-      for (unsigned i = 0; i < other.nondetscc_ranks_.size(); i++)
-      {
-        std::set<unsigned> copy = other.nondetscc_ranks_[i];
-        this->nondetscc_ranks_.emplace_back(copy);
-        this->nondetscc_marks_.push_back(other.nondetscc_marks_[i]);
-      }
-
-      this->set_iw_sccs(other.iw_sccs_);
-      this->set_iw_break_set(other.iw_break_set_);
-      this->det_break_set_ = other.det_break_set_;
-      this->set_active_index(other.active_index_);
-      this->set_acc_detsccs(other.acc_detsccs_);
-      this->curr_reachable_ = other.curr_reachable_;
-
-      this->na_sccs_ = other.na_sccs_;
-
-      return *this;
-    }
-
-    size_t hash() const;
-
-    // SCC information
-    spot::scc_info &si_;
-    // 1. NAC by slice-based complementation
-    std::vector<std::set<unsigned>> nondetscc_ranks_;
-    std::vector<slice_mark> nondetscc_marks_; // marks for in O or not?
-
-    // 2. DAC by determinization or NCSB
-    std::vector<std::vector<state_rank>> detscc_ranks_;
-
-    // 3. IWC states point to RANK_WEAK
-    // breakpoint construction for weak accepting SCCs
-    std::set<unsigned> weak_set_;
-    std::set<unsigned> break_set_;
-
-    std::vector<std::vector<unsigned>> iw_sccs_;
-    std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_detsccs_;
-    std::vector<unsigned> iw_break_set_;
-    std::vector<unsigned> det_break_set_;
-    int active_index_ = 0;
-    std::vector<unsigned> curr_reachable_;
-
-    std::vector<rank_state> na_sccs_;
-
-    void
-    set_iw_sccs(std::vector<std::vector<unsigned>> iw_sccs)
-    {
-      this->iw_sccs_ = iw_sccs;
-    }
-
-    void
-    set_acc_detsccs(std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_detsccs)
-    {
-      this->acc_detsccs_ = acc_detsccs;
-    }
-
-    void
-    set_iw_break_set(std::vector<unsigned> iw_break_set)
-    {
-      this->iw_break_set_ = iw_break_set;
-    }
-
-    void
-    set_active_index(int index)
-    {
-      this->active_index_ = index;
-    }
-  };
-
-  struct complement_mstate_hash
-  {
-    size_t
-    operator()(const complement_mstate &s) const noexcept
-    {
-      return s.hash();
-    }
-  };
-
-  bool
-  complement_mstate::operator<(const complement_mstate &other) const
-  {
-    if (active_index_ == other.active_index_)
-    {
-      if (iw_sccs_ == other.iw_sccs_)
-      {
-        if (iw_break_set_ == other.iw_break_set_)
-        {
-          if (det_break_set_ == other.det_break_set_)
-          {
-            if (acc_detsccs_ == other.acc_detsccs_)
-            {
-              if (curr_reachable_ == other.curr_reachable_)
-              {
-                return na_sccs_ < other.na_sccs_;
-              }
-              else
-              {
-                return curr_reachable_ < other.curr_reachable_;
-              }
-            }
-            else
-            {
-              return acc_detsccs_ < other.acc_detsccs_;
-            }
-          }
-          else
-          {
-            return det_break_set_ < other.det_break_set_;
-          }
-        }
-        else
-        {
-          return iw_break_set_ < other.iw_break_set_;
-        }
-      }
-      else
-      {
-        return iw_sccs_ < other.iw_sccs_;
-      }
-    }
-    else
-    {
-      return active_index_ < other.active_index_;
-    }
-  }
-
-  bool
-  complement_mstate::operator==(const complement_mstate &other) const
-  {
-    if (this->active_index_ != other.active_index_)
-      return false;
-    if (this->iw_sccs_ != other.iw_sccs_)
-      return false;
-    if (this->iw_break_set_ != other.iw_break_set_)
-      return false;
-    if (this->det_break_set_ != other.det_break_set_)
-      return false;
-    if (this->acc_detsccs_ != other.acc_detsccs_)
-      return false;
-    if (this->curr_reachable_ != other.curr_reachable_)
-      return false;
-    if (this->na_sccs_ != other.na_sccs_)
-      return false;
-    return true;
-  }
-
-  int complement_mstate::get_max_rank() const
-  {
-    return -1;
-  }
-
-  std::set<unsigned>
-  complement_mstate::get_reach_set() const
-  {
-    return std::set<unsigned>(curr_reachable_.begin(), curr_reachable_.end());
-  }
-
-  bool complement_mstate::is_empty() const
-  {
-    if (!weak_set_.empty())
-    {
-      return false;
-    }
-    for (unsigned i = 0; i < detscc_ranks_.size(); i++)
-    {
-      if (!detscc_ranks_[i].empty())
-      {
-        return false;
-      }
-    }
-
-    if (!nondetscc_ranks_.empty())
-    {
-      return false;
-    }
-
-    return true;
-  }
-
-  std::set<unsigned>
-  complement_mstate::get_weak_set() const
-  {
-    return weak_set_;
-  }
-
-  size_t
-  complement_mstate::hash() const
-  {
-    size_t res = 0;
-    res = (res << 3) ^ active_index_;
-    for (auto v : iw_sccs_)
-    {
-      for (auto s : v)
-      {
-        res ^= (res << 3) ^ s;
-      }
-    }
-    for (auto s : iw_break_set_)
-    {
-      res ^= (res << 3) ^ s;
-    }
-    for (auto s : det_break_set_)
-    {
-      res ^= (res << 3) ^ s;
-    }
-    for (auto pr : acc_detsccs_)
-    {
-      for (auto v : pr.first)
-      {
-        res ^= (res << 3) ^ v;
-      }
-      for (auto v : pr.second)
-      {
-        res ^= (res << 3) ^ v;
-      }
-    }
-    for (auto s : curr_reachable_)
-    {
-      res ^= (res << 3) ^ s;
-    }
-    for (auto v : na_sccs_)
-    {
-      for (auto s : v.reachable)
-      {
-        res ^= (res << 3) ^ s;
-      }
-      res ^= (res << 3) ^ v.i;
-      for (auto s : v.O)
-      {
-        res ^= (res << 3) ^ s;
-      }
-      for (auto pr : v.f)
-      {
-        res ^= (res << 3) ^ (pr.first ^ pr.second);
-      }
-    }
-
-    return res;
-  }
 
   // computation of deterministic successor
   class compute_det_succ
@@ -1795,7 +1474,8 @@ namespace cola
         if (ms.active_index_ == -1)
           continue;
 
-        // std::cerr << std::endl << "State: " << get_name(ms) << std::endl;
+        // std::cerr << std::endl
+        //           << "State: " << get_name(ms) << std::endl;
         active_index = ms.active_index_;
 
         // skip nonaccepting sccs
@@ -1920,6 +1600,8 @@ namespace cola
           bool iwa_done = false;
           bool det_done = false;
 
+          std::vector<std::vector<std::pair<complement_mstate, bool>>> succ;
+
           for (unsigned i = 0; i < indices.size(); i++)
           {
             true_index = (orig_index + i) % indices.size();
@@ -1966,681 +1648,835 @@ namespace cola
             std::set<unsigned> succ_in_scc;
             std::set_intersection(scc_states.begin(), scc_states.end(), all_succ.begin(), all_succ.end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
 
-            // active component
-            if (not(std::find(index.begin(), index.end(), active_index) == index.end() and (not decomp_options_.tgba or not is_weakscc(scc_types_, index[0]))))
+            /*****/
+            bool active_scc = not(std::find(index.begin(), index.end(), active_index) == index.end() and (not decomp_options_.tgba or not is_weakscc(scc_types_, index[0])));
+            bool next_to_active = (true_index == (orig_index + 1) % indices.size());
+
+            if (is_weakscc(scc_types_, index[0]))
             {
-              if (is_weakscc(scc_types_, index[0]))
+              mh_compl mhc(aut_, index, scc_info, ms, decomp_options_, letter, true_index, dir_sim_, reachable_vector);
+
+              if (active_scc)
+                succ.push_back(mhc.get_succ_active());
+
+              else if (next_to_active)
               {
-                acc_edge = false;
-                iwa_done = true;
-                // getSuccActive
-                if ((not decomp_options_.tgba and ((not decomp_options_.merge_iwa and (this->weaksccs_.size() + this->acc_detsccs_.size() + this->acc_nondetsccs_.size() > 1)) or (this->acc_detsccs_.size() + this->acc_nondetsccs_.size() > 0) or not ms.iw_break_set_.empty())) or not ms.iw_break_set_.empty())
-                {
-                  auto succ_active = mh.get_succ_active(reachable, reach_track, letter, index, ms.iw_break_set_, (decomp_options_.merge_iwa or this->weaksccs_.size() == 1) and this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 0);
-
-                  for (auto succ_tt : succ_active.first)
-                  {
-                    if (decomp_options_.merge_iwa)
-                      iw_succ[0] = std::vector<unsigned>(succ_tt.first.begin(), succ_tt.first.end());
-                    else
-                      iw_succ[true_index] = std::vector<unsigned>(succ_tt.first.begin(), succ_tt.first.end());
-                  }
-                  for (auto succ_at : succ_active.second)
-                  {
-                    if (decomp_options_.merge_iwa)
-                      iw_succ[0] = std::vector<unsigned>(succ_at.first.first.begin(), succ_at.first.first.end());
-                    else
-                      iw_succ[true_index] = std::vector<unsigned>(succ_at.first.first.begin(), succ_at.first.first.end());
-                    for (unsigned i = 0; i < new_succ.size(); i++)
-                    {
-                      new_succ[i].set_iw_break_set(std::vector<unsigned>(succ_at.first.second.begin(), succ_at.first.second.end()));
-                    }
-                    if ((decomp_options_.merge_iwa or this->weaksccs_.size() == 1) and this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 0 and succ_at.second == 1)
-                    {
-                      acc_edge = true;
-                    }
-                  }
-
-                  if (succ_active.second.size() == 0)
-                  {
-                    active_type = false;
-                    active_iw = false;
-                  }
-
-                  for (unsigned j = 0; j < new_succ.size(); j++)
-                    new_succ[j].iw_sccs_ = iw_succ;
-                }
-
-                // getSuccTrackToActive
-                else
-                {
-                  auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
-                  for (auto succ : succ_track_to_active)
-                  {
-                    if (decomp_options_.merge_iwa)
-                      iw_succ[0] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
-                    else
-                      iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
-
-                    for (unsigned j = 0; j < new_succ.size(); j++)
-                    {
-                      new_succ[j].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
-                      if (decomp_options_.merge_iwa)
-                        new_succ[j].iw_sccs_[0] = iw_succ[0];
-                      else
-                        new_succ[j].iw_sccs_[true_index] = iw_succ[true_index];
-                    }
-                    // new_succ[1].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
-                    //  new_succ[1].set_active_index(-2);
-                  }
-                  active_type = true;
-                }
-              }
-
-              else if (is_accepting_detscc(scc_types_, index[0]))
-              {
-                // getSuccActive
-                // currently sampled components
-                if (ms.det_break_set_.size() == 0)
-                  active_type = false;
-
-                std::set<unsigned> indices;
-                for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].first)
-                {
-                  indices.insert(scc_info.scc_of(s));
-                }
-                for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].second)
-                {
-                  indices.insert(scc_info.scc_of(s));
-                }
-
-                if (decomp_options_.merge_det)
-                {
-                  std::set<unsigned> tmp;
-                  for (auto s : reach_track)
-                  {
-                    if (indices.find(scc_info.scc_of(s)) != indices.end())
-                      tmp.insert(s);
-                  }
-                  reach_track = tmp;
-                }
-
-                for (auto i : index)
-                {
-                  std::vector<state_rank> ranks;
-                  for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].first)
-                  {
-                    ranks.push_back({s, NCSB_C});
-                  }
-                  for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].second)
-                  {
-                    ranks.push_back({s, NCSB_S});
-                  }
-
-                  for (auto s : ms.det_break_set_)
-                  {
-                    ranks.push_back({s, NCSB_B});
-                  }
-
-                  succ_det = get_succ_active_CSB((ms.det_break_set_.empty()) ? std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()) : reach_track, letter, ranks, i, new_succ[0], new_succ[1], acc_det_succ, true_index - iw_succ.size());
-                  if (ms.det_break_set_.empty() and (not decomp_options_.merge_det and this->acc_detsccs_.size() > 1))
-                  {
-                    new_succ[0].det_break_set_.clear();
-                    new_succ[1].det_break_set_.clear();
-                  }
-
-                  if (succ_det.empty())
-                  {
-                    new_succ[0].set_active_index(-2);
-                    new_succ[1].set_active_index(-2);
-                  }
-                }
+                succ.push_back(mhc.get_succ_track_to_active());
+                // auto next_succ = mhc.get_succ_track();
+                // succ.back().insert(succ.back().end(), next_succ.begin(), next_succ.end());
+                succ.push_back(mhc.get_succ_track());
               }
 
               else
+                succ.push_back(mhc.get_succ_track());
+            }
+          }
+
+          // combine states
+          std::vector<std::pair<complement_mstate, bool>> successors;
+          // cartesian product
+          unsigned k = 0;
+          true_index = orig_index;
+          for (auto mstate : succ)
+          {
+            if (k == 0)
+            {
+              // active component
+              for (auto &state : mstate)
               {
-                // nondet accepting scc
-                unsigned i = true_index - iw_succ.size() - acc_det_succ.size();
- 
-                succ_na = rank_compl.get_succ_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, this->weaksccs_.size() == 0 and this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 1, index[0]);
-
-                // copy new_succ[0]
-                if (succ_na.size() == 0)
+                state.first.iw_sccs_.resize(ms.iw_sccs_.size());
+                if (not state.first.iw_sccs_.empty())
                 {
-                  new_succ[0].set_active_index(-2);
-                  new_succ[1].set_active_index(-2);
-                }
-                if (succ_na.size() == 1)
-                {
-                  new_succ[1].set_active_index(-2);
-                }
-                // new_succ.pop_back();
-
-                complement_mstate tmp_state(new_succ[0]);
-                for (unsigned j = 0; j < succ_na.size(); j++)
-                {
-                  if (j != 0)
+                  if (true_index != 0)
                   {
-                    complement_mstate new_state(tmp_state);
-                    if (j < new_succ.size())
-                      new_succ[j] = new_state;
-                    else
-                      new_succ.push_back(new_state);
+                    state.first.iw_sccs_[true_index] = state.first.iw_sccs_[0];
+                    state.first.iw_sccs_[0].clear();
                   }
-                  new_succ[j].na_sccs_[i] = succ_na[j].first;
-                  acc_succ.push_back(succ_na[j].second);
                 }
-                if (succ_na.size() == 1)
-                {
-                  acc_succ.push_back(false);
-                }
+                successors.push_back(state);
               }
             }
-
-            // non-active component
+            else if (k == 1)
+            {
+              // active + 1 component - track to active
+              true_index = (true_index + 1) % indices.size();
+              std::vector<std::pair<complement_mstate, bool>> new_succ;
+              for (auto &succ : successors)
+              {
+                if (succ.second)
+                {
+                  // track to active
+                  for (auto &state : mstate)
+                  {
+                    complement_mstate tmp(succ.first);
+                    if (not state.first.iw_sccs_.empty())
+                    {
+                      tmp.iw_sccs_[true_index] = state.first.iw_sccs_[0];
+                      tmp.iw_break_set_ = state.first.iw_break_set_;
+                    }
+                    tmp.active_index_ = ms.active_index_;
+                    unsigned i=0;
+                    do
+                    {
+                      tmp.active_index_ = indices[(true_index + i) % indices.size()]; 
+                      i++;
+                    } while (is_weakscc(scc_types_, tmp.active_index_) and (not is_accepting_weakscc(scc_types_, tmp.active_index_)));
+                    new_succ.push_back({tmp, true});
+                  }
+                }
+                else
+                  new_succ.push_back(succ);
+              }
+              successors = new_succ;
+            }
+            else if (k == 2)
+            {
+              // active + 1 component - track
+              std::vector<std::pair<complement_mstate, bool>> new_succ;
+              for (auto &succ : successors)
+              {
+                if (not succ.second)
+                {
+                  // track
+                  for (auto &state : mstate)
+                  {
+                    complement_mstate tmp(succ.first);
+                    if (not state.first.iw_sccs_.empty())
+                    {
+                      tmp.iw_sccs_[true_index] = state.first.iw_sccs_[0];
+                    }
+                    tmp.active_index_ = ms.active_index_;
+                    new_succ.push_back({tmp, false});
+                  }
+                }
+                else
+                  new_succ.push_back(succ);
+              }
+              successors = new_succ;
+            }
             else
             {
-              // non-active scc
-              if (is_weakscc(scc_types_, index[0]))
+              true_index = (true_index + 1) % indices.size();
+              // other components - track
+              std::vector<std::pair<complement_mstate, bool>> new_succ;
+              for (auto &succ : successors)
               {
-                iwa_done = true;
-
-                if (std::find(this->acc_nondetsccs_.begin(), this->acc_nondetsccs_.end(), indices[orig_index]) == this->acc_nondetsccs_.end())
+                // track
+                for (auto &state : mstate)
                 {
-                  // getSuccTrack
-                  if (active_type or ((index[0] != (indices[(orig_index + 1) % indices.size()]))) or (not is_accepting_weakscc(scc_types_, index[0])))
+                  complement_mstate tmp(succ.first);
+                  if (not state.first.iw_sccs_.empty())
                   {
-                    auto succ_track = mh.get_succ_track(reachable, reach_track, letter, index);
-                    for (auto succ : succ_track)
-                    {
-                      if (decomp_options_.merge_iwa)
-                        iw_succ[0] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
-                      else
-                        iw_succ[true_index] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
-                    }
-                    for (unsigned i = 0; i < new_succ.size(); i++)
-                    {
-                      if (decomp_options_.merge_iwa)
-                        new_succ[i].iw_sccs_[0] = iw_succ[0];
-                      else
-                        new_succ[i].iw_sccs_[true_index] = iw_succ[true_index];
-                    }
+                    tmp.iw_sccs_[true_index] = state.first.iw_sccs_[0];
                   }
-
-                  // getSuccTrackToActive
-                  else
-                  {
-                    auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
-                    for (auto succ : succ_track_to_active)
-                    {
-                      if (decomp_options_.merge_iwa)
-                        iw_succ[0] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
-                      else
-                        iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
-                      for (unsigned i = 0; i < new_succ.size(); i++)
-                      {
-                        if (decomp_options_.merge_iwa)
-                          new_succ[i].iw_sccs_[0] = iw_succ[0];
-                        else
-                          new_succ[i].iw_sccs_[true_index] = iw_succ[true_index];
-                        new_succ[i].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
-                      }
-                    }
-                  }
-                }
-
-                else
-                {
-                  std::vector<std::vector<unsigned>> iw_succ2;
-                  for (auto v : iw_succ)
-                    iw_succ2.push_back(v);
-
-                  std::vector<unsigned> break_set;
-
-                  auto succ_track = mh.get_succ_track(reachable, reach_track, letter, index);
-                  for (auto succ : succ_track)
-                  {
-                    if (decomp_options_.merge_iwa)
-                      iw_succ[0] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
-                    else
-                      iw_succ[true_index] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
-                  }
-
-                  auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
-                  for (auto succ : succ_track_to_active)
-                  {
-                    if (decomp_options_.merge_iwa)
-                      iw_succ2[0] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
-                    else
-                      iw_succ2[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
-
-                    break_set = std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end());
-                  }
-
-                  for (unsigned j = 0; j < succ_na.size(); j++)
-                  {
-                    if (acc_succ[j] and indices[true_index] == indices[(orig_index + 1) % indices.size()])
-                    {
-                      // track to active
-                      if (decomp_options_.merge_iwa)
-                        new_succ[j].iw_sccs_[0] = iw_succ2[0];
-                      else
-                        new_succ[j].iw_sccs_[true_index] = iw_succ2[true_index];
-                      new_succ[j].iw_break_set_ = break_set;
-                    }
-                    else
-                    {
-                      // track
-                      if (decomp_options_.merge_iwa)
-                        new_succ[j].iw_sccs_[0] = iw_succ[0];
-                      else
-                        new_succ[j].iw_sccs_[true_index] = iw_succ[true_index];
-                    }
-                  }
+                  new_succ.push_back({tmp, succ.second});
                 }
               }
-
-              // accepting det scc
-              else if (is_accepting_detscc(scc_types_, index[0]))
-              {
-                std::vector<state_rank> ranks;
-                if (not decomp_options_.merge_det)
-                {
-                  for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].first)
-                  {
-                    ranks.push_back({s, NCSB_C});
-                    ranks.push_back({s, NCSB_B});
-                  }
-                  for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].second)
-                  {
-                    ranks.push_back({s, NCSB_S});
-                  }
-                }
-                else
-                {
-                  for (unsigned i = 0; i < ms.acc_detsccs_.size(); i++)
-                  {
-                    for (auto s : ms.acc_detsccs_[i].first)
-                    {
-                      ranks.push_back({s, NCSB_C});
-                      ranks.push_back({s, NCSB_B});
-                    }
-                    for (auto s : ms.acc_detsccs_[i].second)
-                    {
-                      ranks.push_back({s, NCSB_S});
-                    }
-                  }
-                }
-
-                if (std::find(this->acc_nondetsccs_.begin(), this->acc_nondetsccs_.end(), indices[orig_index]) == this->acc_nondetsccs_.end())
-                {
-                  if (active_type or (index[0] != (indices[(orig_index + 1) % indices.size()])))
-                  {
-                    // getSuccTrack
-                    for (auto i : index)
-                    {
-                      auto succ = get_succ_track_CSB(reachable, letter, ranks, i, new_succ[0], new_succ[0], acc_det_succ, true_index - iw_succ.size());
-                      if (succ.empty())
-                      {
-                        new_succ[0].set_active_index(-2);
-                        new_succ[1].set_active_index(-2);
-                      }
-                      else
-                      {
-                        for (unsigned i = 1; i < new_succ.size(); i++)
-                        {
-                          if (new_succ[i].acc_detsccs_.size() <= true_index - iw_succ.size())
-                            new_succ[i].acc_detsccs_ = new_succ[0].acc_detsccs_;
-                          else
-                            new_succ[i].acc_detsccs_[true_index - iw_succ.size()] = new_succ[0].acc_detsccs_[true_index - iw_succ.size()];
-                        }
-                      }
-                    }
-                  }
-                  else
-                  {
-                    // getSuccTrackToActive
-                    for (auto i : index)
-                    {
-                      // get successors for every deterministic component
-                      auto succ = get_succ_active_CSB(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), letter, ranks, i, new_succ[0], new_succ[1], acc_det_succ, true_index - iw_succ.size());
-
-                      if (succ.empty())
-                      {
-                        new_succ[0].set_active_index(-2);
-                        new_succ[1].set_active_index(-2);
-                      }
-                    }
-                  }
-                }
-
-                else
-                {
-                  complement_mstate new_state_track(new_succ[0]);
-                  complement_mstate new_state_track2(new_succ[0]);
-                  complement_mstate new_state_track_to_active(new_succ[0]);
-                  complement_mstate new_state_track_to_active2(new_succ[0]);
-                  for (auto i : index)
-                  {
-                    auto succ = get_succ_track_CSB(reachable, letter, ranks, i, new_state_track, new_state_track2, acc_det_succ, true_index - iw_succ.size());
-                    if (succ.empty())
-                    {
-                      new_state_track.set_active_index(-2);
-                      new_state_track2.set_active_index(-2);
-                    }
-
-                    succ = get_succ_active_CSB(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), letter, ranks, i, new_state_track_to_active, new_state_track_to_active2, acc_det_succ, true_index - iw_succ.size());
-                    if (succ.empty())
-                    {
-                      new_state_track_to_active.set_active_index(-2);
-                      new_state_track_to_active2.set_active_index(-2);
-                    }
-                  }
-
-                  std::vector<complement_mstate> new_state_vector;
-                  unsigned count = (new_succ.size() < acc_succ.size() ? new_succ.size() : acc_succ.size());
-
-                  // for (int j = 0; j < acc_succ.size() - new_succ.size(); j++)
-                  // {
-                  //   new_succ.push_back(new_succ[0]);
-                  // }
-
-                  for (unsigned j = 0; j < count; j++)
-                  {
-                    if (acc_succ[j] and true_index == (orig_index + 1) % indices.size())
-                    {
-                      // track to active
-                      if (new_state_track_to_active.active_index_ != -2)
-                      {
-                        if (new_state_track_to_active2.active_index_ != -2)
-                        {
-                          complement_mstate tmp(new_succ[j]);
-                          tmp.acc_detsccs_ = new_state_track_to_active2.acc_detsccs_;
-                          tmp.det_break_set_ = new_state_track_to_active2.det_break_set_;
-                          new_state_vector.push_back(tmp);
-                        }
-                        new_succ[j].acc_detsccs_ = new_state_track_to_active.acc_detsccs_;
-                        new_succ[j].det_break_set_ = new_state_track_to_active.det_break_set_;
-                      }
-                      else
-                        new_succ[j].active_index_ = -2;
-                    }
-                    else
-                    {
-                      // track
-                      if (new_state_track.active_index_ != -2)
-                      {
-                        new_succ[j].acc_detsccs_ = new_state_track.acc_detsccs_;
-                      }
-                      else
-                        new_succ[j].active_index_ = -2;
-                    }
-                  }
-
-                  for (auto s : new_state_vector)
-                    new_succ.push_back(s);
-                }
-              }
-
-              else
-              {
-                // nondet accepting scc
-                unsigned i = true_index - iw_succ.size() - acc_det_succ.size();
-
-                // std::vector<std::pair<rank_state, bool>> succ_na;
-                bool to_active;
-
-                to_active = not(active_type or ((index[0] != (indices[(orig_index + 1) % indices.size()]))));
-
-                if (std::find(this->acc_nondetsccs_.begin(), this->acc_nondetsccs_.end(), indices[orig_index]) != this->acc_nondetsccs_.end())
-                {
-                  // active component was acc nondet
-                  auto succ_tr = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
-                  auto succ_tr_act = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
-
-                  unsigned count = new_succ.size();
-                  if (count > 0 and new_succ[0].active_index_ == -2)
-                    count = 0;
-                  if (count == 2 and new_succ[1].active_index_ == -2)
-                    count = 1;
-                  for (unsigned j = 0; j < count; j++)
-                  {
-                    if (acc_succ[j])
-                    {
-                      // track to active
-                      if (succ_tr_act.size() > 0)
-                      {
-                        new_succ[j].na_sccs_[i] = succ_tr_act[0].first;
-                        for (unsigned k = 1; k < succ_tr_act.size(); k++)
-                        {
-                          complement_mstate tmp(new_succ[j]);
-                          tmp.na_sccs_[i] = succ_tr_act[k].first;
-                          new_succ.push_back(tmp);
-                          acc_succ.push_back(acc_succ[j]);
-                        }
-                      }
-                      else
-                        new_succ[j].active_index_ = -2;
-                    }
-                    else
-                    {
-                      // track
-                      if (succ_tr.size() > 0)
-                      {
-                        new_succ[j].na_sccs_[i] = succ_tr[0].first;
-                        for (unsigned k = 1; k < succ_tr.size(); k++)
-                        {
-                          complement_mstate tmp(new_succ[j]);
-                          tmp.na_sccs_[i] = succ_tr[k].first;
-                          new_succ.push_back(tmp);
-                          acc_succ.push_back(acc_succ[j]);
-                        }
-                      }
-                      else
-                        new_succ[j].active_index_ = -2;
-                    }
-                  }
-                }
-
-                else
-                {
-                  if (not to_active)
-                  {
-                    succ_na = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
-                  }
-                  else
-                  {
-                    succ_na = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
-                  }
-
-                  // copy new_succ[0]
-                  if (succ_na.size() == 0)
-                  {
-                    new_succ[0].set_active_index(-2);
-                    new_succ[1].set_active_index(-2);
-                  }
-
-                  if (to_active)
-                  {
-                    if (succ_na.size() == 1)
-                      new_succ[1].set_active_index(-2);
-                    new_succ.pop_back();
-
-                    complement_mstate tmp_state(new_succ[0]);
-                    for (unsigned j = 0; j < succ_na.size(); j++)
-                    {
-                      if (j != 0)
-                      {
-                        complement_mstate new_state(tmp_state);
-                        new_succ.push_back(new_state);
-                      }
-                      new_succ[j].na_sccs_[i] = succ_na[j].first;
-                      acc_succ.push_back(succ_na[j].second);
-                    }
-                  }
-
-                  else
-                  {
-                    complement_mstate tmp_state(new_succ[0]);
-                    unsigned count = new_succ.size();
-                    for (unsigned k = 0; k < count; k++)
-                    {
-                      for (unsigned j = 0; j < succ_na.size(); j++)
-                      {
-                        if (j != 0)
-                        {
-                          complement_mstate new_state(new_succ[k]);
-                          new_succ.push_back(new_state);
-                        }
-                        new_succ[k + j].na_sccs_[i] = succ_na[j].first;
-                        acc_succ.push_back(false);
-                      }
-                    }
-                  }
-                }
-              }
+              successors = new_succ;
             }
+            k++;
           }
 
-          for (unsigned i = 0; i < new_succ.size(); i++)
+          for (unsigned i = 0; i < successors.size(); i++)
           {
-            if (new_succ[i].active_index_ != -2)
+            successors[i].first.curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
+        
+            if (std::find(all_states.begin(), all_states.end(), successors[i].first) == all_states.end())
             {
-              active_type = true;
-              if ((is_weakscc(scc_types_, active_index) and ms.iw_break_set_.size() == 0) or (not is_weakscc(scc_types_, active_index) and is_accepting_detscc(scc_types_, active_index) and ms.det_break_set_.size() == 0))
-                active_type = false;
-              if (decomp_options_.tgba and (not is_weakscc(scc_types_, active_index) and is_accepting_detscc(scc_types_, active_index) and ms.det_break_set_.size() == 0))
-                active_type = false;
-              if ((not is_weakscc(scc_types_, active_index)) and (not is_accepting_detscc(scc_types_, active_index)) and acc_succ[i])
-                active_type = false;
+              all_states.push_back(successors[i].first);
+              auto s = new_state(successors[i].first);
+            }
 
-              if (not active_type or not active_iw)
-              {
-                new_succ[i].set_active_index((indices[(orig_index + 1) % indices.size()]));
-
-                if (decomp_options_.tgba)
-                {
-                  // no active index for all inherently weak sccs
-                  while (not is_accepting_detscc(scc_types_, new_succ[i].active_index_))
-                  {
-                    orig_index = (orig_index + 1) % indices.size();
-                    new_succ[i].active_index_ = indices[orig_index];
-                  }
-                }
-                else
-                {
-                  // no active index for nonaccepting scc
-                  while (is_weakscc(scc_types_, new_succ[i].active_index_) and (not is_accepting_weakscc(scc_types_, new_succ[i].active_index_)))
-                  {
-                    orig_index = (orig_index + 1) % indices.size();
-                    new_succ[i].active_index_ = indices[orig_index];
-                  }
-                }
-              }
-              else
-                new_succ[i].set_active_index(active_index);
-              // new_succ[i].set_iw_sccs(iw_succ);
-
-              if (decomp_options_.iw_sim)
-              {
-                // simulation on currently reachable states
-                std::set<unsigned> aux_reach(all_succ.begin(), all_succ.end());
-                std::set<unsigned> new_reach;
-                for (auto state : all_succ)
-                {
-                  if (not is_weakscc(scc_types_, scc_info.scc_of(state)))
-                  {
-                    aux_reach.erase(state);
-                    new_reach.insert(state);
-                  }
-                }
-
-                for (auto pr : dir_sim_)
-                {
-                  if (pr.first != pr.second and aux_reach.find(pr.first) != aux_reach.end() and aux_reach.find(pr.second) != aux_reach.end() and reachable_vector[pr.second].find(pr.first) == reachable_vector[pr.second].end())
-                    aux_reach.erase(pr.first);
-                }
-
-                aux_reach.insert(new_reach.begin(), new_reach.end());
-
-                new_succ[i].curr_reachable_ = std::vector<unsigned>(aux_reach.begin(), aux_reach.end());
-              }
-              else
-              {
-                new_succ[i].curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
-              }
-
-              if (is_weakscc(scc_types_, new_succ[i].active_index_) and not decomp_options_.tgba)
-              {
-                new_succ[i].det_break_set_.clear();
-              }
-
-              // det sim
-              if (is_accepting_detscc(scc_types_, new_succ[i].active_index_) and decomp_options_.merge_det and decomp_options_.det_sim)
-              {
-                // remove smaller states from S
-
-                // all reachable states
-                std::set<unsigned> new_S;
-                for (auto item : new_succ[i].acc_detsccs_)
-                {
-                  new_S.insert(item.first.begin(), item.first.end());
-                  new_S.insert(item.second.begin(), item.second.end());
-                }
-
-                for (auto pr : dir_sim_)
-                {
-                  if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
-                  {
-                    // reachability check
-                    if (reachable_vector[pr.first].find(pr.second) != reachable_vector[pr.first].end() and reachable_vector[pr.second].find(pr.first) == reachable_vector[pr.second].end())
-                    {
-                      // both states in S -> we can remove the smaller one from S
-                      new_S.erase(pr.first);
-                    }
-                  }
-                }
-
-                // erase state if not in new_S
-                for (auto &item : new_succ[i].acc_detsccs_)
-                {
-                  std::vector<unsigned> result;
-                  std::set_intersection(item.first.begin(), item.first.end(), new_S.begin(), new_S.end(), std::back_inserter(result));
-                  item.first = result;
-
-                  std::vector<unsigned> result2;
-                  std::set_intersection(item.second.begin(), item.second.end(), new_S.begin(), new_S.end(), std::back_inserter(result2));
-                  item.second = result2;
-                }
-                // erase state from B if not in new_S
-                std::vector<unsigned> result;
-                std::set_intersection(new_succ[i].det_break_set_.begin(), new_succ[i].det_break_set_.end(), new_S.begin(), new_S.end(), std::back_inserter(result));
-                new_succ[i].det_break_set_ = result;
-              }
-
-              // std::cerr << "New succ: " << get_name(new_succ[i]) << std::endl;
-              if (std::find(all_states.begin(), all_states.end(), new_succ[i]) == all_states.end())
-              {
-                all_states.push_back(new_succ[i]);
-                auto s = new_state(new_succ[i]);
-              }
-
-              auto p = rank2n_.emplace(new_succ[i], 0);
-              if (active_type and not acc_edge and active_iw)
-              {
-                res_->new_edge(top.second, p.first->second, letter);
-                // std::cerr << "Nonaccepting" << std::endl;
-              }
-              else
-              {
-                res_->new_edge(top.second, p.first->second, letter, {0});
-                // std::cerr << "Accepting" << std::endl;
-              }
-
-              if (decomp_options_.tgba and ms.iw_break_set_.size() == 0)
-                res_->new_edge(top.second, p.first->second, letter, {1});
+            // std::cerr << "New succ: " << get_name(successors[i].first) << std::endl;
+            auto p = rank2n_.emplace(successors[i].first, 0);
+            if (not successors[i].second)
+            {
+              res_->new_edge(top.second, p.first->second, letter);
+              // std::cerr << "Nonaccepting" << std::endl;
+            }
+            else
+            {
+              res_->new_edge(top.second, p.first->second, letter, {0});
+              // std::cerr << "Accepting" << std::endl;
             }
           }
+          /*****/
+
+          //     // active component
+          //     if (not(std::find(index.begin(), index.end(), active_index) == index.end() and (not decomp_options_.tgba or not is_weakscc(scc_types_, index[0]))))
+          //     {
+          //       if (is_weakscc(scc_types_, index[0]))
+          //       {
+          //         acc_edge = false;
+          //         iwa_done = true;
+          //         // getSuccActive
+          //         if ((not decomp_options_.tgba and ((not decomp_options_.merge_iwa and (this->weaksccs_.size() + this->acc_detsccs_.size() + this->acc_nondetsccs_.size() > 1)) or (this->acc_detsccs_.size() + this->acc_nondetsccs_.size() > 0) or not ms.iw_break_set_.empty())) or not ms.iw_break_set_.empty())
+          //         {
+          //           auto succ_active = mh.get_succ_active(reachable, reach_track, letter, index, ms.iw_break_set_, (decomp_options_.merge_iwa or this->weaksccs_.size() == 1) and this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 0);
+
+          //           for (auto succ_tt : succ_active.first)
+          //           {
+          //             if (decomp_options_.merge_iwa)
+          //               iw_succ[0] = std::vector<unsigned>(succ_tt.first.begin(), succ_tt.first.end());
+          //             else
+          //               iw_succ[true_index] = std::vector<unsigned>(succ_tt.first.begin(), succ_tt.first.end());
+          //           }
+          //           for (auto succ_at : succ_active.second)
+          //           {
+          //             if (decomp_options_.merge_iwa)
+          //               iw_succ[0] = std::vector<unsigned>(succ_at.first.first.begin(), succ_at.first.first.end());
+          //             else
+          //               iw_succ[true_index] = std::vector<unsigned>(succ_at.first.first.begin(), succ_at.first.first.end());
+          //             for (unsigned i = 0; i < new_succ.size(); i++)
+          //             {
+          //               new_succ[i].set_iw_break_set(std::vector<unsigned>(succ_at.first.second.begin(), succ_at.first.second.end()));
+          //             }
+          //             if ((decomp_options_.merge_iwa or this->weaksccs_.size() == 1) and this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 0 and succ_at.second == 1)
+          //             {
+          //               acc_edge = true;
+          //             }
+          //           }
+
+          //           if (succ_active.second.size() == 0)
+          //           {
+          //             active_type = false;
+          //             active_iw = false;
+          //           }
+
+          //           for (unsigned j = 0; j < new_succ.size(); j++)
+          //             new_succ[j].iw_sccs_ = iw_succ;
+          //         }
+
+          //         // getSuccTrackToActive
+          //         else
+          //         {
+          //           auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
+          //           for (auto succ : succ_track_to_active)
+          //           {
+          //             if (decomp_options_.merge_iwa)
+          //               iw_succ[0] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+          //             else
+          //               iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+
+          //             for (unsigned j = 0; j < new_succ.size(); j++)
+          //             {
+          //               new_succ[j].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+          //               if (decomp_options_.merge_iwa)
+          //                 new_succ[j].iw_sccs_[0] = iw_succ[0];
+          //               else
+          //                 new_succ[j].iw_sccs_[true_index] = iw_succ[true_index];
+          //             }
+          //             // new_succ[1].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+          //             //  new_succ[1].set_active_index(-2);
+          //           }
+          //           active_type = true;
+          //         }
+          //       }
+
+          //       else if (is_accepting_detscc(scc_types_, index[0]))
+          //       {
+          //         // getSuccActive
+          //         // currently sampled components
+          //         if (ms.det_break_set_.size() == 0)
+          //           active_type = false;
+
+          //         std::set<unsigned> indices;
+          //         for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].first)
+          //         {
+          //           indices.insert(scc_info.scc_of(s));
+          //         }
+          //         for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].second)
+          //         {
+          //           indices.insert(scc_info.scc_of(s));
+          //         }
+
+          //         if (decomp_options_.merge_det)
+          //         {
+          //           std::set<unsigned> tmp;
+          //           for (auto s : reach_track)
+          //           {
+          //             if (indices.find(scc_info.scc_of(s)) != indices.end())
+          //               tmp.insert(s);
+          //           }
+          //           reach_track = tmp;
+          //         }
+
+          //         for (auto i : index)
+          //         {
+          //           std::vector<state_rank> ranks;
+          //           for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].first)
+          //           {
+          //             ranks.push_back({s, NCSB_C});
+          //           }
+          //           for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].second)
+          //           {
+          //             ranks.push_back({s, NCSB_S});
+          //           }
+
+          //           for (auto s : ms.det_break_set_)
+          //           {
+          //             ranks.push_back({s, NCSB_B});
+          //           }
+
+          //           succ_det = get_succ_active_CSB((ms.det_break_set_.empty()) ? std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()) : reach_track, letter, ranks, i, new_succ[0], new_succ[1], acc_det_succ, true_index - iw_succ.size());
+          //           if (ms.det_break_set_.empty() and (not decomp_options_.merge_det and this->acc_detsccs_.size() > 1))
+          //           {
+          //             new_succ[0].det_break_set_.clear();
+          //             new_succ[1].det_break_set_.clear();
+          //           }
+
+          //           if (succ_det.empty())
+          //           {
+          //             new_succ[0].set_active_index(-2);
+          //             new_succ[1].set_active_index(-2);
+          //           }
+          //         }
+          //       }
+
+          //       else
+          //       {
+          //         // nondet accepting scc
+          //         unsigned i = true_index - iw_succ.size() - acc_det_succ.size();
+
+          //         succ_na = rank_compl.get_succ_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, this->weaksccs_.size() == 0 and this->acc_detsccs_.size() == 0 and this->acc_nondetsccs_.size() == 1, index[0]);
+
+          //         // copy new_succ[0]
+          //         if (succ_na.size() == 0)
+          //         {
+          //           new_succ[0].set_active_index(-2);
+          //           new_succ[1].set_active_index(-2);
+          //         }
+          //         if (succ_na.size() == 1)
+          //         {
+          //           new_succ[1].set_active_index(-2);
+          //         }
+          //         // new_succ.pop_back();
+
+          //         complement_mstate tmp_state(new_succ[0]);
+          //         for (unsigned j = 0; j < succ_na.size(); j++)
+          //         {
+          //           if (j != 0)
+          //           {
+          //             complement_mstate new_state(tmp_state);
+          //             if (j < new_succ.size())
+          //               new_succ[j] = new_state;
+          //             else
+          //               new_succ.push_back(new_state);
+          //           }
+          //           new_succ[j].na_sccs_[i] = succ_na[j].first;
+          //           acc_succ.push_back(succ_na[j].second);
+          //         }
+          //         if (succ_na.size() == 1)
+          //         {
+          //           acc_succ.push_back(false);
+          //         }
+          //       }
+          //     }
+
+          //     // non-active component
+          //     else
+          //     {
+          //       // non-active scc
+          //       if (is_weakscc(scc_types_, index[0]))
+          //       {
+          //         iwa_done = true;
+
+          //         if (std::find(this->acc_nondetsccs_.begin(), this->acc_nondetsccs_.end(), indices[orig_index]) == this->acc_nondetsccs_.end())
+          //         {
+          //           // getSuccTrack
+          //           if (active_type or ((index[0] != (indices[(orig_index + 1) % indices.size()]))) or (not is_accepting_weakscc(scc_types_, index[0])))
+          //           {
+          //             auto succ_track = mh.get_succ_track(reachable, reach_track, letter, index);
+          //             for (auto succ : succ_track)
+          //             {
+          //               if (decomp_options_.merge_iwa)
+          //                 iw_succ[0] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
+          //               else
+          //                 iw_succ[true_index] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
+          //             }
+          //             for (unsigned i = 0; i < new_succ.size(); i++)
+          //             {
+          //               if (decomp_options_.merge_iwa)
+          //                 new_succ[i].iw_sccs_[0] = iw_succ[0];
+          //               else
+          //                 new_succ[i].iw_sccs_[true_index] = iw_succ[true_index];
+          //             }
+          //           }
+
+          //           // getSuccTrackToActive
+          //           else
+          //           {
+          //             auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
+          //             for (auto succ : succ_track_to_active)
+          //             {
+          //               if (decomp_options_.merge_iwa)
+          //                 iw_succ[0] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+          //               else
+          //                 iw_succ[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+          //               for (unsigned i = 0; i < new_succ.size(); i++)
+          //               {
+          //                 if (decomp_options_.merge_iwa)
+          //                   new_succ[i].iw_sccs_[0] = iw_succ[0];
+          //                 else
+          //                   new_succ[i].iw_sccs_[true_index] = iw_succ[true_index];
+          //                 new_succ[i].set_iw_break_set(std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end()));
+          //               }
+          //             }
+          //           }
+          //         }
+
+          //         else
+          //         {
+          //           std::vector<std::vector<unsigned>> iw_succ2;
+          //           for (auto v : iw_succ)
+          //             iw_succ2.push_back(v);
+
+          //           std::vector<unsigned> break_set;
+
+          //           auto succ_track = mh.get_succ_track(reachable, reach_track, letter, index);
+          //           for (auto succ : succ_track)
+          //           {
+          //             if (decomp_options_.merge_iwa)
+          //               iw_succ[0] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
+          //             else
+          //               iw_succ[true_index] = std::vector<unsigned>(succ.first.begin(), succ.first.end());
+          //           }
+
+          //           auto succ_track_to_active = mh.get_succ_track_to_active(reachable, reach_track, letter, index);
+          //           for (auto succ : succ_track_to_active)
+          //           {
+          //             if (decomp_options_.merge_iwa)
+          //               iw_succ2[0] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+          //             else
+          //               iw_succ2[true_index] = std::vector<unsigned>(succ.first.first.begin(), succ.first.first.end());
+
+          //             break_set = std::vector<unsigned>(succ.first.second.begin(), succ.first.second.end());
+          //           }
+
+          //           for (unsigned j = 0; j < succ_na.size(); j++)
+          //           {
+          //             if (acc_succ[j] and indices[true_index] == indices[(orig_index + 1) % indices.size()])
+          //             {
+          //               // track to active
+          //               if (decomp_options_.merge_iwa)
+          //                 new_succ[j].iw_sccs_[0] = iw_succ2[0];
+          //               else
+          //                 new_succ[j].iw_sccs_[true_index] = iw_succ2[true_index];
+          //               new_succ[j].iw_break_set_ = break_set;
+          //             }
+          //             else
+          //             {
+          //               // track
+          //               if (decomp_options_.merge_iwa)
+          //                 new_succ[j].iw_sccs_[0] = iw_succ[0];
+          //               else
+          //                 new_succ[j].iw_sccs_[true_index] = iw_succ[true_index];
+          //             }
+          //           }
+          //         }
+          //       }
+
+          //       // accepting det scc
+          //       else if (is_accepting_detscc(scc_types_, index[0]))
+          //       {
+          //         std::vector<state_rank> ranks;
+          //         if (not decomp_options_.merge_det)
+          //         {
+          //           for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].first)
+          //           {
+          //             ranks.push_back({s, NCSB_C});
+          //             ranks.push_back({s, NCSB_B});
+          //           }
+          //           for (auto s : ms.acc_detsccs_[true_index - iw_succ.size()].second)
+          //           {
+          //             ranks.push_back({s, NCSB_S});
+          //           }
+          //         }
+          //         else
+          //         {
+          //           for (unsigned i = 0; i < ms.acc_detsccs_.size(); i++)
+          //           {
+          //             for (auto s : ms.acc_detsccs_[i].first)
+          //             {
+          //               ranks.push_back({s, NCSB_C});
+          //               ranks.push_back({s, NCSB_B});
+          //             }
+          //             for (auto s : ms.acc_detsccs_[i].second)
+          //             {
+          //               ranks.push_back({s, NCSB_S});
+          //             }
+          //           }
+          //         }
+
+          //         if (std::find(this->acc_nondetsccs_.begin(), this->acc_nondetsccs_.end(), indices[orig_index]) == this->acc_nondetsccs_.end())
+          //         {
+          //           if (active_type or (true_index != (orig_index + 1) % indices.size()))
+          //           {
+          //             // getSuccTrack
+          //             for (auto i : index)
+          //             {
+          //               auto succ = get_succ_track_CSB(reachable, letter, ranks, i, new_succ[0], new_succ[0], acc_det_succ, true_index - iw_succ.size());
+          //               if (succ.empty())
+          //               {
+          //                 new_succ[0].set_active_index(-2);
+          //                 new_succ[1].set_active_index(-2);
+          //               }
+          //               else
+          //               {
+          //                 for (unsigned i = 1; i < new_succ.size(); i++)
+          //                 {
+          //                   if (new_succ[i].acc_detsccs_.size() <= true_index - iw_succ.size())
+          //                     new_succ[i].acc_detsccs_ = new_succ[0].acc_detsccs_;
+          //                   else
+          //                     new_succ[i].acc_detsccs_[true_index - iw_succ.size()] = new_succ[0].acc_detsccs_[true_index - iw_succ.size()];
+          //                 }
+          //               }
+          //             }
+          //           }
+          //           else
+          //           {
+          //             // getSuccTrackToActive
+          //             for (auto i : index)
+          //             {
+          //               // get successors for every deterministic component
+          //               auto succ = get_succ_active_CSB(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), letter, ranks, i, new_succ[0], new_succ[1], acc_det_succ, true_index - iw_succ.size());
+
+          //               if (succ.empty())
+          //               {
+          //                 new_succ[0].set_active_index(-2);
+          //                 new_succ[1].set_active_index(-2);
+          //               }
+          //             }
+          //           }
+          //         }
+
+          //         else
+          //         {
+          //           complement_mstate new_state_track(new_succ[0]);
+          //           complement_mstate new_state_track2(new_succ[0]);
+          //           complement_mstate new_state_track_to_active(new_succ[0]);
+          //           complement_mstate new_state_track_to_active2(new_succ[0]);
+          //           for (auto i : index)
+          //           {
+          //             auto succ = get_succ_track_CSB(reachable, letter, ranks, i, new_state_track, new_state_track2, acc_det_succ, true_index - iw_succ.size());
+          //             if (succ.empty())
+          //             {
+          //               new_state_track.set_active_index(-2);
+          //               new_state_track2.set_active_index(-2);
+          //             }
+
+          //             succ = get_succ_active_CSB(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), letter, ranks, i, new_state_track_to_active, new_state_track_to_active2, acc_det_succ, true_index - iw_succ.size());
+          //             if (succ.empty())
+          //             {
+          //               new_state_track_to_active.set_active_index(-2);
+          //               new_state_track_to_active2.set_active_index(-2);
+          //             }
+          //           }
+
+          //           std::vector<complement_mstate> new_state_vector;
+          //           unsigned count = (new_succ.size() < acc_succ.size() ? new_succ.size() : acc_succ.size());
+
+          //           // for (int j = 0; j < acc_succ.size() - new_succ.size(); j++)
+          //           // {
+          //           //   new_succ.push_back(new_succ[0]);
+          //           // }
+
+          //           for (unsigned j = 0; j < count; j++)
+          //           {
+          //             if (acc_succ[j] and true_index == (orig_index + 1) % indices.size())
+          //             {
+          //               // track to active
+          //               if (new_state_track_to_active.active_index_ != -2)
+          //               {
+          //                 if (new_state_track_to_active2.active_index_ != -2)
+          //                 {
+          //                   complement_mstate tmp(new_succ[j]);
+          //                   tmp.acc_detsccs_ = new_state_track_to_active2.acc_detsccs_;
+          //                   tmp.det_break_set_ = new_state_track_to_active2.det_break_set_;
+          //                   new_state_vector.push_back(tmp);
+          //                 }
+          //                 new_succ[j].acc_detsccs_ = new_state_track_to_active.acc_detsccs_;
+          //                 new_succ[j].det_break_set_ = new_state_track_to_active.det_break_set_;
+          //               }
+          //               else
+          //                 new_succ[j].active_index_ = -2;
+          //             }
+          //             else
+          //             {
+          //               // track
+          //               if (new_state_track.active_index_ != -2)
+          //               {
+          //                 new_succ[j].acc_detsccs_ = new_state_track.acc_detsccs_;
+          //               }
+          //               else
+          //                 new_succ[j].active_index_ = -2;
+          //             }
+          //           }
+
+          //           for (auto s : new_state_vector)
+          //             new_succ.push_back(s);
+          //         }
+          //       }
+
+          //       else
+          //       {
+          //         // nondet accepting scc
+          //         unsigned i = true_index - iw_succ.size() - acc_det_succ.size();
+
+          //         // std::vector<std::pair<rank_state, bool>> succ_na;
+          //         bool to_active;
+
+          //         to_active = not(active_type or ((true_index != (orig_index + 1) % indices.size())));
+
+          //         if (std::find(this->acc_nondetsccs_.begin(), this->acc_nondetsccs_.end(), indices[orig_index]) != this->acc_nondetsccs_.end())
+          //         {
+          //           // active component was acc nondet
+          //           auto succ_tr = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+          //           auto succ_tr_act = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+
+          //           unsigned count = new_succ.size();
+          //           if (count > 0 and new_succ[0].active_index_ == -2)
+          //             count = 0;
+          //           if (count == 2 and new_succ[1].active_index_ == -2)
+          //             count = 1;
+          //           for (unsigned j = 0; j < count; j++)
+          //           {
+          //             if (acc_succ[j] and true_index == (orig_index + 1) % indices.size())
+          //             {
+          //               // track to active
+          //               if (succ_tr_act.size() > 0)
+          //               {
+          //                 new_succ[j].na_sccs_[i] = succ_tr_act[0].first;
+          //                 for (unsigned k = 1; k < succ_tr_act.size(); k++)
+          //                 {
+          //                   complement_mstate tmp(new_succ[j]);
+          //                   tmp.na_sccs_[i] = succ_tr_act[k].first;
+          //                   new_succ.push_back(tmp);
+          //                   acc_succ.push_back(acc_succ[j]);
+          //                 }
+          //               }
+          //               else
+          //                 new_succ[j].active_index_ = -2;
+          //             }
+          //             else
+          //             {
+          //               // track
+          //               if (succ_tr.size() > 0)
+          //               {
+          //                 new_succ[j].na_sccs_[i] = succ_tr[0].first;
+          //                 for (unsigned k = 1; k < succ_tr.size(); k++)
+          //                 {
+          //                   complement_mstate tmp(new_succ[j]);
+          //                   tmp.na_sccs_[i] = succ_tr[k].first;
+          //                   new_succ.push_back(tmp);
+          //                   acc_succ.push_back(acc_succ[j]);
+          //                 }
+          //               }
+          //               else
+          //                 new_succ[j].active_index_ = -2;
+          //             }
+          //           }
+          //         }
+
+          //         else
+          //         {
+          //           if (not to_active)
+          //           {
+          //             succ_na = rank_compl.get_succ_track(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+          //           }
+          //           else
+          //           {
+          //             succ_na = rank_compl.get_succ_track_to_active(std::set<unsigned>(ms.curr_reachable_.begin(), ms.curr_reachable_.end()), ms.na_sccs_[i], letter, index[0]);
+          //           }
+
+          //           // copy new_succ[0]
+          //           if (succ_na.size() == 0)
+          //           {
+          //             new_succ[0].set_active_index(-2);
+          //             new_succ[1].set_active_index(-2);
+          //           }
+
+          //           if (to_active)
+          //           {
+          //             if (succ_na.size() == 1)
+          //               new_succ[1].set_active_index(-2);
+          //             new_succ.pop_back();
+
+          //             complement_mstate tmp_state(new_succ[0]);
+          //             for (unsigned j = 0; j < succ_na.size(); j++)
+          //             {
+          //               if (j != 0)
+          //               {
+          //                 complement_mstate new_state(tmp_state);
+          //                 new_succ.push_back(new_state);
+          //               }
+          //               new_succ[j].na_sccs_[i] = succ_na[j].first;
+          //               acc_succ.push_back(succ_na[j].second);
+          //             }
+          //           }
+
+          //           else
+          //           {
+          //             complement_mstate tmp_state(new_succ[0]);
+          //             unsigned count = new_succ.size();
+          //             for (unsigned k = 0; k < count; k++)
+          //             {
+          //               for (unsigned j = 0; j < succ_na.size(); j++)
+          //               {
+          //                 if (j != 0)
+          //                 {
+          //                   complement_mstate new_state(new_succ[k]);
+          //                   new_succ.push_back(new_state);
+          //                 }
+          //                 new_succ[k + j].na_sccs_[i] = succ_na[j].first;
+          //                 acc_succ.push_back(false);
+          //               }
+          //             }
+          //           }
+          //         }
+          //       }
+          //     }
+          //   }
+
+          //   for (unsigned i = 0; i < new_succ.size(); i++)
+          //   {
+          //     if (new_succ[i].active_index_ != -2)
+          //     {
+          //       active_type = true;
+          //       if ((is_weakscc(scc_types_, active_index) and ms.iw_break_set_.size() == 0) or (not is_weakscc(scc_types_, active_index) and is_accepting_detscc(scc_types_, active_index) and ms.det_break_set_.size() == 0))
+          //         active_type = false;
+          //       if (decomp_options_.tgba and (not is_weakscc(scc_types_, active_index) and is_accepting_detscc(scc_types_, active_index) and ms.det_break_set_.size() == 0))
+          //         active_type = false;
+          //       if ((not is_weakscc(scc_types_, active_index)) and (not is_accepting_detscc(scc_types_, active_index)) and acc_succ[i])
+          //         active_type = false;
+
+          //       if (not active_type or not active_iw)
+          //       {
+          //         new_succ[i].set_active_index((indices[(orig_index + 1) % indices.size()]));
+
+          //         if (decomp_options_.tgba)
+          //         {
+          //           // no active index for all inherently weak sccs
+          //           while (not is_accepting_detscc(scc_types_, new_succ[i].active_index_))
+          //           {
+          //             orig_index = (orig_index + 1) % indices.size();
+          //             new_succ[i].active_index_ = indices[orig_index];
+          //           }
+          //         }
+          //         else
+          //         {
+          //           // no active index for nonaccepting scc
+          //           while (is_weakscc(scc_types_, new_succ[i].active_index_) and (not is_accepting_weakscc(scc_types_, new_succ[i].active_index_)))
+          //           {
+          //             orig_index = (orig_index + 1) % indices.size();
+          //             new_succ[i].active_index_ = indices[orig_index];
+          //           }
+          //         }
+          //       }
+          //       else
+          //         new_succ[i].set_active_index(active_index);
+          //       // new_succ[i].set_iw_sccs(iw_succ);
+
+          //       if (decomp_options_.iw_sim)
+          //       {
+          //         // simulation on currently reachable states
+          //         std::set<unsigned> aux_reach(all_succ.begin(), all_succ.end());
+          //         std::set<unsigned> new_reach;
+          //         for (auto state : all_succ)
+          //         {
+          //           if (not is_weakscc(scc_types_, scc_info.scc_of(state)))
+          //           {
+          //             aux_reach.erase(state);
+          //             new_reach.insert(state);
+          //           }
+          //         }
+
+          //         for (auto pr : dir_sim_)
+          //         {
+          //           if (pr.first != pr.second and aux_reach.find(pr.first) != aux_reach.end() and aux_reach.find(pr.second) != aux_reach.end() and reachable_vector[pr.second].find(pr.first) == reachable_vector[pr.second].end())
+          //             aux_reach.erase(pr.first);
+          //         }
+
+          //         aux_reach.insert(new_reach.begin(), new_reach.end());
+
+          //         new_succ[i].curr_reachable_ = std::vector<unsigned>(aux_reach.begin(), aux_reach.end());
+          //       }
+          //       else
+          //       {
+          //         new_succ[i].curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
+          //       }
+
+          //       if (is_weakscc(scc_types_, new_succ[i].active_index_) and not decomp_options_.tgba)
+          //       {
+          //         new_succ[i].det_break_set_.clear();
+          //       }
+
+          //       // det sim
+          //       if (is_accepting_detscc(scc_types_, new_succ[i].active_index_) and decomp_options_.merge_det and decomp_options_.det_sim)
+          //       {
+          //         // remove smaller states from S
+
+          //         // all reachable states
+          //         std::set<unsigned> new_S;
+          //         for (auto item : new_succ[i].acc_detsccs_)
+          //         {
+          //           new_S.insert(item.first.begin(), item.first.end());
+          //           new_S.insert(item.second.begin(), item.second.end());
+          //         }
+
+          //         for (auto pr : dir_sim_)
+          //         {
+          //           if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
+          //           {
+          //             // reachability check
+          //             if (reachable_vector[pr.first].find(pr.second) != reachable_vector[pr.first].end() and reachable_vector[pr.second].find(pr.first) == reachable_vector[pr.second].end())
+          //             {
+          //               // both states in S -> we can remove the smaller one from S
+          //               new_S.erase(pr.first);
+          //             }
+          //           }
+          //         }
+
+          //         // erase state if not in new_S
+          //         for (auto &item : new_succ[i].acc_detsccs_)
+          //         {
+          //           std::vector<unsigned> result;
+          //           std::set_intersection(item.first.begin(), item.first.end(), new_S.begin(), new_S.end(), std::back_inserter(result));
+          //           item.first = result;
+
+          //           std::vector<unsigned> result2;
+          //           std::set_intersection(item.second.begin(), item.second.end(), new_S.begin(), new_S.end(), std::back_inserter(result2));
+          //           item.second = result2;
+          //         }
+          //         // erase state from B if not in new_S
+          //         std::vector<unsigned> result;
+          //         std::set_intersection(new_succ[i].det_break_set_.begin(), new_succ[i].det_break_set_.end(), new_S.begin(), new_S.end(), std::back_inserter(result));
+          //         new_succ[i].det_break_set_ = result;
+          //       }
+
+          //       // std::cerr << "New succ: " << get_name(new_succ[i]) << std::endl;
+          //       if (std::find(all_states.begin(), all_states.end(), new_succ[i]) == all_states.end())
+          //       {
+          //         all_states.push_back(new_succ[i]);
+          //         auto s = new_state(new_succ[i]);
+          //       }
+
+          //       auto p = rank2n_.emplace(new_succ[i], 0);
+          //       if (active_type and not acc_edge and active_iw)
+          //       {
+          //         res_->new_edge(top.second, p.first->second, letter);
+          //         // std::cerr << "Nonaccepting" << std::endl;
+          //       }
+          //       else
+          //       {
+          //         res_->new_edge(top.second, p.first->second, letter, {0});
+          //         // std::cerr << "Accepting" << std::endl;
+          //       }
+
+          //       if (decomp_options_.tgba and ms.iw_break_set_.size() == 0)
+          //         res_->new_edge(top.second, p.first->second, letter, {1});
+          //     }
+          //}
         }
       }
 
@@ -2679,7 +2515,7 @@ namespace cola
 
   spot::twa_graph_ptr
   saturation(const spot::twa_graph_ptr &aut, spot::scc_info si)
-  { 
+  {
     bool change;
     for (unsigned i = 0; i < si.scc_count(); i++)
     {
@@ -2735,6 +2571,14 @@ namespace cola
 
     if (decomp_options.scc_compl)
     {
+      // saturation
+      if (decomp_options.sat)
+      {
+        aut_reduced = saturation(aut_reduced, scc);
+        spot::scc_info scc_sat(aut_reduced, spot::scc_info_options::ALL);
+        scc = scc_sat;
+      }
+
       // decompose source automaton
       cola::decomposer decomp(aut_reduced, om);
       auto decomposed = decomp.run(true, decomp_options.merge_iwa, decomp_options.merge_det);
@@ -2754,14 +2598,6 @@ namespace cola
           // complement each automaton
           auto aut_preprocessed = p.run(aut);
           spot::scc_info part_scc(aut_preprocessed, spot::scc_info_options::ALL);
-
-          // saturation
-          if (decomp_options.sat)
-          {
-            aut_preprocessed = saturation(aut_preprocessed, part_scc); 
-            spot::scc_info scc_sat(aut_preprocessed, spot::scc_info_options::ALL);
-            part_scc = scc_sat;
-          }
 
           auto comp = cola::tnba_complement(aut_preprocessed, part_scc, om, implications, decomp_options);
           auto dec_aut = comp.run();
@@ -2785,14 +2621,6 @@ namespace cola
 
         return result;
       }
-    }
-
-    // saturation
-    if (decomp_options.sat)
-    {
-      aut_reduced = saturation(aut_reduced, scc);
-      spot::scc_info scc_sat(aut_reduced, spot::scc_info_options::ALL);
-      scc = scc_sat;
     }
 
     spot::const_twa_graph_ptr aut_to_compl;

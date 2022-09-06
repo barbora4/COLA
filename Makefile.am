@@ -32,6 +32,10 @@ src_libcola_la_LIBADD = -L$(SPOTPREFIX)/lib -lspot -lbddx
 src_libcola_la_SOURCES =			\
   src/cola.hpp			\
   src/cola.cpp			\
+  src/complement_mstate.hpp     \
+  src/complement_mstate.cpp \
+  src/complement_class.hpp      \
+  src/complement_class.cpp \
   src/complement_tnba.cpp				\
   src/composer.cpp				\
   src/composer.hpp				\
@@ -56,6 +60,10 @@ src_libcola_la_SOURCES =			\
   src/rankings.cpp        \
   src/rank_compl.hpp      \
   src/rank_compl.cpp      \
-  src/dataflow.hpp
+  src/dataflow.hpp        \
+  src/complement_mh.hpp   \
+  src/complement_mh.cpp   \
+  src/complement_ncsb.hpp  \
+  src/complement_rank.hpp
 
 cola_SOURCES = src/main.cpp
