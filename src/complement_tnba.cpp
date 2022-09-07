@@ -15,13 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//#include "optimizer.hpp"
 #include "cola.hpp"
 #include "complement_mstate.hpp"
 #include "complement_class.hpp"
 #include "simulation.hpp"
 #include "types.hpp"
-//#include "struct.hpp"
 #include "decomposer.hpp"
 #include "rankings.hpp"
 #include "complement_mh.hpp"
@@ -136,24 +134,6 @@ namespace cola
 
     // Show Rank states in state name to help debug
     bool show_names_;
-
-    std::map<std::pair<std::set<unsigned>, std::set<unsigned>>, unsigned> rank_bounds_; // TODO
-
-    std::string
-    get_det_string(const std::vector<state_rank> &states)
-    {
-      std::string res = "[";
-      bool first_state = true;
-      for (unsigned p = 0; p < states.size(); p++)
-      {
-        if (!first_state)
-          res += " < ";
-        first_state = false;
-        res += std::to_string(states[p].first);
-      }
-      res += "]";
-      return res;
-    }
 
     std::string
     get_name(const complement_mstate &ms)
