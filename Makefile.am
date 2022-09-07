@@ -64,6 +64,7 @@ src_libcola_la_SOURCES =			\
   src/complement_mh.hpp   \
   src/complement_mh.cpp   \
   src/complement_ncsb.hpp  \
+  src/complement_ncsb.cpp  \
   src/complement_rank.hpp
 
 cola_SOURCES = src/main.cpp

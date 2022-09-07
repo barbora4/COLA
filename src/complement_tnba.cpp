@@ -63,9 +63,9 @@
 namespace cola
 {
   // (C, S, B) for complementing DACs
-  const int NCSB_C = 2;
-  const int NCSB_S = 4;
-  const int NCSB_B = 3;
+  // const int NCSB_C = 2;
+  // const int NCSB_S = 4;
+  // const int NCSB_B = 3;
 
   // computation of deterministic successor
   class compute_det_succ
@@ -1431,8 +1431,8 @@ namespace cola
       else
         res_->set_generalized_buchi(1);
 
-      // spot::print_hoa(std::cerr, aut_);
-      // std::cerr << std::endl << std::endl;
+      spot::print_hoa(std::cerr, aut_);
+      std::cerr << std::endl << std::endl;
 
       // initial macrostate
       auto scc_info = get_scc_info();
@@ -1474,8 +1474,8 @@ namespace cola
         if (ms.active_index_ == -1)
           continue;
 
-        // std::cerr << std::endl
-        //           << "State: " << get_name(ms) << std::endl;
+        std::cerr << std::endl
+                  << "State: " << get_name(ms) << std::endl;
         active_index = ms.active_index_;
 
         // skip nonaccepting sccs
@@ -1526,7 +1526,7 @@ namespace cola
         {
           bdd letter = bdd_satoneset(all, msupport, bddfalse);
           all -= letter;
-          // std::cerr << "Current symbol: " << letter << std::endl;
+          std::cerr << "Current symbol: " << letter << std::endl;
 
           std::set<unsigned> all_succ = mh.get_all_successors(reachable, letter);
 
@@ -1662,13 +1662,31 @@ namespace cola
               else if (next_to_active)
               {
                 succ.push_back(mhc.get_succ_track_to_active());
-                // auto next_succ = mhc.get_succ_track();
-                // succ.back().insert(succ.back().end(), next_succ.begin(), next_succ.end());
                 succ.push_back(mhc.get_succ_track());
               }
 
               else
                 succ.push_back(mhc.get_succ_track());
+            }
+            else if (is_accepting_detscc(scc_types_, index[0]))
+            {
+              ncsb_compl ncsb(aut_, index, scc_info, ms, decomp_options_, letter, true_index - ms.iw_sccs_.size(), dir_sim_, reachable_vector, is_accepting_);
+
+              if (active_scc)
+              {
+                succ.push_back(ncsb.get_succ_active());
+              }
+
+              else if (next_to_active)
+              {
+                succ.push_back(ncsb.get_succ_track_to_active());
+                succ.push_back(ncsb.get_succ_track());
+              }
+
+              else
+              {
+                succ.push_back(ncsb.get_succ_track());
+              }
             }
           }
 
@@ -1684,13 +1702,25 @@ namespace cola
               // active component
               for (auto &state : mstate)
               {
+                bool iw = not state.first.iw_sccs_.empty();
+                bool det = not state.first.acc_detsccs_.empty();
                 state.first.iw_sccs_.resize(ms.iw_sccs_.size());
-                if (not state.first.iw_sccs_.empty())
+                state.first.acc_detsccs_.resize(ms.acc_detsccs_.size());
+                if (iw)
                 {
                   if (true_index != 0)
                   {
                     state.first.iw_sccs_[true_index] = state.first.iw_sccs_[0];
                     state.first.iw_sccs_[0].clear();
+                  }
+                }
+                else if (det)
+                {
+                  if (true_index - ms.iw_sccs_.size() != 0)
+                  {
+                    state.first.acc_detsccs_[true_index - ms.iw_sccs_.size()] = state.first.acc_detsccs_[0];
+                    state.first.acc_detsccs_[0].first.clear();
+                    state.first.acc_detsccs_[0].second.clear();
                   }
                 }
                 successors.push_back(state);
@@ -1713,6 +1743,11 @@ namespace cola
                     {
                       tmp.iw_sccs_[true_index] = state.first.iw_sccs_[0];
                       tmp.iw_break_set_ = state.first.iw_break_set_;
+                    }
+                    else if (not state.first.acc_detsccs_.empty())
+                    {
+                      tmp.acc_detsccs_[true_index - ms.iw_sccs_.size()] = state.first.acc_detsccs_[0];
+                      tmp.det_break_set_ = state.first.det_break_set_;
                     }
                     tmp.active_index_ = ms.active_index_;
                     unsigned i=0;
@@ -1740,10 +1775,14 @@ namespace cola
                   // track
                   for (auto &state : mstate)
                   {
-                    complement_mstate tmp(succ.first);
+                    complement_mstate tmp(succ.first); 
                     if (not state.first.iw_sccs_.empty())
                     {
                       tmp.iw_sccs_[true_index] = state.first.iw_sccs_[0];
+                    }
+                    else if (not state.first.acc_detsccs_.empty())
+                    {
+                      tmp.acc_detsccs_[true_index - ms.iw_sccs_.size()] = state.first.acc_detsccs_[0];
                     }
                     tmp.active_index_ = ms.active_index_;
                     new_succ.push_back({tmp, false});
@@ -1769,6 +1808,10 @@ namespace cola
                   {
                     tmp.iw_sccs_[true_index] = state.first.iw_sccs_[0];
                   }
+                  else if (not state.first.acc_detsccs_.empty())
+                  {
+                    tmp.acc_detsccs_[true_index - ms.iw_sccs_.size()] = state.first.acc_detsccs_[0]; 
+                  }
                   new_succ.push_back({tmp, succ.second});
                 }
               }
@@ -1787,17 +1830,17 @@ namespace cola
               auto s = new_state(successors[i].first);
             }
 
-            // std::cerr << "New succ: " << get_name(successors[i].first) << std::endl;
+            std::cerr << "New succ: " << get_name(successors[i].first) << std::endl;
             auto p = rank2n_.emplace(successors[i].first, 0);
             if (not successors[i].second)
             {
               res_->new_edge(top.second, p.first->second, letter);
-              // std::cerr << "Nonaccepting" << std::endl;
+              std::cerr << "Nonaccepting" << std::endl;
             }
             else
             {
               res_->new_edge(top.second, p.first->second, letter, {0});
-              // std::cerr << "Accepting" << std::endl;
+              std::cerr << "Accepting" << std::endl;
             }
           }
           /*****/

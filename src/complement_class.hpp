@@ -27,5 +27,7 @@ namespace cola
         std::vector<std::pair<complement_mstate, bool>> get_succ_active(){return std::vector<std::pair<complement_mstate, bool>>();}
 
         std::set<unsigned> get_all_successors(std::vector<unsigned> current_states, bdd symbol); 
+        std::set<unsigned> get_all_successors_in_scc(std::vector<unsigned> current_states, bdd symbol); 
+        std::set<unsigned> get_succ_acc_trans_scc(std::vector<unsigned> current_states, bdd symbol);
     };
 }
