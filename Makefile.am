@@ -54,17 +54,14 @@ src_libcola_la_SOURCES =			\
   src/simulation.cpp			\
   src/simulation.hpp			\
   src/types.hpp           \
-  src/mh_compl.hpp        \
-  src/mh_compl.cpp        \
   src/rankings.hpp        \
   src/rankings.cpp        \
-  src/rank_compl.hpp      \
-  src/rank_compl.cpp      \
   src/dataflow.hpp        \
   src/complement_mh.hpp   \
   src/complement_mh.cpp   \
   src/complement_ncsb.hpp  \
   src/complement_ncsb.cpp  \
-  src/complement_rank.hpp
+  src/complement_rank.hpp  \
+  src/complement_rank.cpp
 
 cola_SOURCES = src/main.cpp
