@@ -96,7 +96,7 @@ namespace cola
         return succ;
       }
 
-      std::set<unsigned> B_succ = get_all_successors_in_scc(mstate_.det_break_set_, symbol_);
+      std::set<unsigned> B_succ = get_all_successors_in_scc_same(mstate_.det_break_set_, symbol_);
       std::set<unsigned> B_prime;
       std::set_intersection(B_succ.begin(), B_succ.end(), C_prime.begin(), C_prime.end(), std::inserter(B_prime, B_prime.begin()));
 
@@ -118,6 +118,7 @@ namespace cola
       std::set_difference(C_prime.begin(), C_prime.end(), S_prime2.begin(), S_prime2.end(), std::inserter(C_prime2, C_prime2.begin()));
 
       succ2.acc_detsccs_.push_back({std::vector<unsigned>(C_prime2.begin(), C_prime2.end()), std::vector<unsigned>(S_prime2.begin(), S_prime2.end())});
+      succ2.det_break_set_ = succ2.acc_detsccs_.back().first;
       succ.push_back({succ2, false});
     }
 
