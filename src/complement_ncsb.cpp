@@ -35,7 +35,7 @@ namespace cola
     {
       complement_mstate succ_state(scc_info_);
 
-      auto S_succ = get_all_successors_in_scc(mstate_.acc_detsccs_[true_index_].second, symbol_);
+      auto S_succ = get_all_successors_in_scc_same(mstate_.acc_detsccs_[true_index_].second, symbol_);
       std::vector<unsigned> S_prime = std::vector<unsigned>(S_succ.begin(), S_succ.end());
 
       auto C_succ = get_all_successors_in_scc(mstate_.curr_reachable_, symbol_);
@@ -83,7 +83,7 @@ namespace cola
       complement_mstate succ1(scc_info_);
       complement_mstate succ2(scc_info_);
 
-      std::set<unsigned> S_prime = get_all_successors_in_scc(mstate_.acc_detsccs_[true_index_].second, symbol_);
+      std::set<unsigned> S_prime = get_all_successors_in_scc_same(mstate_.acc_detsccs_[true_index_].second, symbol_);
 
       std::set<unsigned> C_succ = get_all_successors_in_scc(mstate_.acc_detsccs_[true_index_].first, symbol_);
       std::set<unsigned> C_prime;

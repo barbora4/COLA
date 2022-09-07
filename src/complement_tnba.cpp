@@ -1431,8 +1431,8 @@ namespace cola
       else
         res_->set_generalized_buchi(1);
 
-      spot::print_hoa(std::cerr, aut_);
-      std::cerr << std::endl << std::endl;
+      // spot::print_hoa(std::cerr, aut_);
+      // std::cerr << std::endl << std::endl;
 
       // initial macrostate
       auto scc_info = get_scc_info();
@@ -1474,8 +1474,8 @@ namespace cola
         if (ms.active_index_ == -1)
           continue;
 
-        std::cerr << std::endl
-                  << "State: " << get_name(ms) << std::endl;
+        // std::cerr << std::endl
+        //           << "State: " << get_name(ms) << std::endl;
         active_index = ms.active_index_;
 
         // skip nonaccepting sccs
@@ -1526,7 +1526,7 @@ namespace cola
         {
           bdd letter = bdd_satoneset(all, msupport, bddfalse);
           all -= letter;
-          std::cerr << "Current symbol: " << letter << std::endl;
+          // std::cerr << "Current symbol: " << letter << std::endl;
 
           std::set<unsigned> all_succ = mh.get_all_successors(reachable, letter);
 
@@ -1830,17 +1830,17 @@ namespace cola
               auto s = new_state(successors[i].first);
             }
 
-            std::cerr << "New succ: " << get_name(successors[i].first) << std::endl;
+            // std::cerr << "New succ: " << get_name(successors[i].first) << std::endl;
             auto p = rank2n_.emplace(successors[i].first, 0);
             if (not successors[i].second)
             {
               res_->new_edge(top.second, p.first->second, letter);
-              std::cerr << "Nonaccepting" << std::endl;
+              // std::cerr << "Nonaccepting" << std::endl;
             }
             else
             {
               res_->new_edge(top.second, p.first->second, letter, {0});
-              std::cerr << "Accepting" << std::endl;
+              // std::cerr << "Accepting" << std::endl;
             }
           }
           /*****/
