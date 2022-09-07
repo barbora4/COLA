@@ -1,49 +1,9 @@
-#include "rank_compl.hpp"
-
-#include <set>
-#include <algorithm>
+#include "complement_rank.hpp"
 
 namespace cola
 {
-    std::set<unsigned> rank_complement::get_all_successors(std::set<unsigned> current_states, bdd symbol)
-    {
-        std::set<unsigned> successors;
-
-        for (unsigned s : current_states)
-        {
-            for (const auto &t : aut_->out(s))
-            {
-                if (!bdd_implies(symbol, t.cond))
-                    continue;
-
-                successors.insert(t.dst);
-            }
-        }
-
-        return successors;
-    }
-
-    std::set<int> rank_complement::get_all_successors_acc(std::set<unsigned> current_states, bdd symbol, unsigned scc_index)
-    {
-        std::set<int> successors;
-        spot::acc_cond::mark_t acc = {0};
-
-        for (unsigned s : current_states)
-        {
-            for (const auto &t : aut_->out(s))
-            {
-                if (!bdd_implies(symbol, t.cond))
-                    continue;
-
-                if (t.acc == acc and scc_info_.scc_of(t.dst) == scc_index)
-                    successors.insert((int)t.dst);
-            }
-        }
-
-        return successors;
-    }
-
-    std::set<int> rank_complement::get_successors_with_box(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index)
+    std::set<int>
+    rank_comp::get_successors_with_box(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index)
     {
         std::set<int> succ;
 
@@ -62,7 +22,7 @@ namespace cola
         // box
         if (state_set.find(-1) != state_set.end())
         {
-            auto all_succ = get_all_successors(reachable, letter);
+            auto all_succ = get_all_successors(std::vector<unsigned>(reachable.begin(), reachable.end()), letter);
             for (auto state : all_succ)
             {
                 if (std::find(scc_info_.states_of(scc_index).begin(), scc_info_.states_of(scc_index).end(), state) != scc_info_.states_of(scc_index).end())
@@ -98,7 +58,8 @@ namespace cola
         return succ;
     }
 
-    void rank_complement::get_max(std::vector<ranking> &rankings)
+    void
+    rank_comp::get_max(std::vector<ranking> &rankings)
     {
         std::vector<ranking> tmp(rankings.begin(), rankings.end());
 
@@ -116,7 +77,8 @@ namespace cola
         rankings = tmp;
     }
 
-    std::vector<ranking> rank_complement::get_succ_rankings(ranking r, std::vector<std::tuple<int, int, bool>> restr, std::set<unsigned> reachable, bdd letter, unsigned scc_index)
+    std::vector<ranking>
+    rank_comp::get_succ_rankings(ranking r, std::vector<std::tuple<int, int, bool>> restr, std::set<unsigned> reachable, bdd letter, unsigned scc_index)
     {
         std::vector<ranking> rankings = get_tight_rankings(restr);
         std::vector<ranking> tmp(rankings.begin(), rankings.end());
@@ -159,7 +121,7 @@ namespace cola
                     sing.insert((unsigned)state);
                     std::set<int> succ = get_all_successors_acc(sing, letter, scc_index);
 
-                    unsigned rank = (r[state]%2 == 0 ? r[state] : r[state]-1);
+                    unsigned rank = (r[state] % 2 == 0 ? r[state] : r[state] - 1);
                     for (auto s : succ)
                     {
                         if (r2[s] > rank)
@@ -178,7 +140,8 @@ namespace cola
         return std::vector<ranking>(rankings_set.begin(), rankings_set.end());
     }
 
-    std::vector<ranking> rank_complement::get_maxrank(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index)
+    std::vector<ranking>
+    rank_comp::get_maxrank(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index)
     {
         std::vector<std::tuple<int, int, bool>> restr;
 
@@ -198,49 +161,63 @@ namespace cola
         return succ_rankings;
     }
 
-    std::vector<std::pair<rank_state, bool>> rank_complement::get_succ_track(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index)
+    std::vector<std::pair<complement_mstate, bool>>
+    rank_comp::get_succ_track()
     {
-        std::vector<std::pair<rank_state, bool>> succ;
+        std::vector<std::pair<complement_mstate, bool>> succ;
+
+        rank_state state = mstate_.na_sccs_[true_index_];
+        std::set<unsigned> reachable = std::set<unsigned>(mstate_.curr_reachable_.begin(), mstate_.curr_reachable_.end());
 
         if (state.track)
         {
             // tracking type
             rank_state new_state;
             new_state.track = true;
-            new_state.reachable = get_successors_with_box(reachable, state, letter, scc_index);
-            succ.push_back({new_state, false});
+            new_state.reachable = get_successors_with_box(reachable, state, symbol_, scc_index_[0]);
+            complement_mstate tmp(scc_info_);
+            tmp.na_sccs_.push_back(new_state);
+            succ.push_back({tmp, false});
         }
 
         else
         {
             // active type
-            std::vector<ranking> maxrank = get_maxrank(reachable, state, letter, scc_index);
+            std::vector<ranking> maxrank = get_maxrank(reachable, state, symbol_, scc_index_[0]);
             if (maxrank.size() > 0)
             {
                 rank_state s;
                 s.f = maxrank[0];
-                s.track = false; 
-                succ.push_back({s, false});
+                s.track = false;
+                complement_mstate tmp(scc_info_);
+                tmp.na_sccs_.push_back(s);
+                succ.push_back({tmp, false});
             }
         }
 
         return succ;
     }
 
-    std::vector<std::pair<rank_state, bool>> rank_complement::get_succ_track_to_active(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index)
+    std::vector<std::pair<complement_mstate, bool>>
+    rank_comp::get_succ_track_to_active()
     {
-        std::vector<std::pair<rank_state, bool>> succ;
+        std::vector<std::pair<complement_mstate, bool>> succ;
+
+        rank_state state = mstate_.na_sccs_[true_index_];
+        std::set<unsigned> reachable = std::set<unsigned>(mstate_.curr_reachable_.begin(), mstate_.curr_reachable_.end());
 
         if (state.track)
         {
             // tracking type
             rank_state new_state;
-            auto reach_succ = get_successors_with_box(reachable, state, letter, scc_index);
+            auto reach_succ = get_successors_with_box(reachable, state, symbol_, scc_index_[0]);
             new_state.reachable = reach_succ;
-            succ.push_back({new_state, false});
+            complement_mstate tmp(scc_info_);
+            tmp.na_sccs_.push_back(new_state);
+            succ.push_back({tmp, false});
 
             std::vector<std::tuple<int, int, bool>> r;
-            int size = scc_info_.states_of(scc_index).size();
+            int size = scc_info_.states_of(scc_index_[0]).size();
             for (auto s : reach_succ)
             {
                 bool accepting = (s != -1 ? is_accepting_[s] : false);
@@ -259,27 +236,31 @@ namespace cola
                     if (pr.second == 0)
                         new_state.O.insert(pr.first);
                 }
-                succ.push_back({new_state, false});
+                complement_mstate tmp(scc_info_);
+                tmp.na_sccs_.push_back(new_state);
+                succ.push_back({tmp, false});
             }
         }
 
         else
         {
             // active type
-            std::vector<std::pair<rank_state, bool>> ret = get_succ_track(reachable, state, letter, scc_index);
+            std::vector<std::pair<complement_mstate, bool>> ret = get_succ_track();
 
             if (ret.size() > 0)
             {
                 rank_state new_state;
                 new_state.track = false;
-                new_state.f = ret[0].first.f;
+                new_state.f = ret[0].first.na_sccs_[true_index_].f;
                 new_state.i = 0;
                 for (auto pr : new_state.f)
                 {
                     if (pr.second == 0)
                         new_state.O.insert(pr.first);
                 }
-                succ.push_back({new_state, false});
+                complement_mstate tmp(scc_info_);
+                tmp.na_sccs_.push_back(new_state);
+                succ.push_back({tmp, false});
             }
 
             // otherwise no successor
@@ -288,9 +269,14 @@ namespace cola
         return succ;
     }
 
-    std::vector<std::pair<rank_state, bool>> rank_complement::get_succ_active(std::set<unsigned> reachable, rank_state state, bdd letter, bool one_scc, unsigned scc_index)
+    std::vector<std::pair<complement_mstate, bool>>
+    rank_comp::get_succ_active()
     {
-        std::vector<std::pair<rank_state, bool>> succ;
+        std::vector<std::pair<complement_mstate, bool>> succ;
+
+        rank_state state = mstate_.na_sccs_[true_index_];
+        std::set<unsigned> reachable = std::set<unsigned>(mstate_.curr_reachable_.begin(), mstate_.curr_reachable_.end());
+        bool one_scc = ((mstate_.iw_sccs_.size() == 0) and (mstate_.acc_detsccs_.size() == 0) and (mstate_.na_sccs_.size() == 1));
 
         if (state.track)
         {
@@ -301,7 +287,7 @@ namespace cola
                 if (one_scc)
                 {
                     // only one scc
-                    std::vector<std::pair<rank_state, bool>> ret = get_succ_track_to_active(reachable, state, letter, scc_index);
+                    std::vector<std::pair<complement_mstate, bool>> ret = get_succ_track_to_active();
 
                     if (ret.size() > 0)
                         succ.push_back({ret[0].first, true});
@@ -310,24 +296,26 @@ namespace cola
                 {
                     rank_state new_state;
                     new_state.track = true;
-                    new_state.reachable = get_successors_with_box(reachable, state, letter, scc_index);
-                    succ.push_back({new_state, true});
+                    new_state.reachable = get_successors_with_box(reachable, state, symbol_, scc_index_[0]);
+                    complement_mstate tmp(scc_info_);
+                    tmp.na_sccs_.push_back(new_state);
+                    succ.push_back({tmp, true});
                 }
             }
 
             else
             {
-                succ = get_succ_track_to_active(reachable, state, letter, scc_index);
+                succ = get_succ_track_to_active();
             }
         }
 
         else
         {
             // active type
-            std::vector<std::pair<rank_state, bool>> ret = get_succ_track(reachable, state, letter, scc_index);
+            std::vector<std::pair<complement_mstate, bool>> ret = get_succ_track();
             if (ret.size() > 0)
             {
-                ranking g = ret[0].first.f;
+                ranking g = ret[0].first.na_sccs_[true_index_].f;
 
                 std::vector<rank_state> eta_3;
                 std::vector<rank_state> eta_4;
@@ -342,7 +330,7 @@ namespace cola
 
                     rank_state tmp;
                     tmp.reachable = state.O;
-                    std::set<int> O_succ = get_successors_with_box(reachable, tmp, letter, scc_index);
+                    std::set<int> O_succ = get_successors_with_box(reachable, tmp, symbol_, scc_index_[0]);
                     std::set<int> g_rev;
                     for (auto pr : g)
                     {
@@ -360,7 +348,7 @@ namespace cola
                     new_state.f = g;
                     new_state.i = (state.i + 2) % (g.get_max_rank() + 1);
 
-                    std::set<int> dom_succ = get_successors_with_box(reachable, state, letter, scc_index);
+                    std::set<int> dom_succ = get_successors_with_box(reachable, state, symbol_, scc_index_[0]);
                     std::set<int> g_rev;
                     for (auto pr : g)
                     {
@@ -380,7 +368,7 @@ namespace cola
                     std::set<int> M;
                     rank_state tmp;
                     tmp.reachable = state.O;
-                    std::set<int> O_succ = get_successors_with_box(reachable, tmp, letter, scc_index);
+                    std::set<int> O_succ = get_successors_with_box(reachable, tmp, symbol_, scc_index_[0]);
                     std::set<int> g_rev;
                     for (auto pr : g)
                     {
@@ -415,22 +403,34 @@ namespace cola
                     U.push_back(eta_4[0]);
 
                 if (eta_3.size() > 0 and std::find(U.begin(), U.end(), eta_3[0]) == U.end())
-                    succ.push_back({eta_3[0], false});
+                {
+                    complement_mstate tmp_mstate(scc_info_);
+                    tmp_mstate.na_sccs_.push_back(eta_3[0]);
+                    succ.push_back({tmp_mstate, false});
+                }
                 if (eta_4.size() > 0 and std::find(U.begin(), U.end(), eta_4[0]) == U.end())
-                    succ.push_back({eta_4[0], false});
+                {
+                    complement_mstate tmp_mstate(scc_info_);
+                    tmp_mstate.na_sccs_.push_back(eta_4[0]);
+                    succ.push_back({tmp_mstate, false}); 
+                }
 
                 for (rank_state s : U)
                 {
                     if (not one_scc)
                     {
                         rank_state tmp;
-                        tmp.track = false; 
+                        tmp.track = false;
                         tmp.f = s.f;
-                        succ.push_back({tmp, true});
+                        complement_mstate tmp_mstate(scc_info_);
+                        tmp_mstate.na_sccs_.push_back(tmp);
+                        succ.push_back({tmp_mstate, true});
                     }
                     else
                     {
-                        succ.push_back({s, true});
+                        complement_mstate tmp(scc_info_);
+                        tmp.na_sccs_.push_back(s);
+                        succ.push_back({tmp, true});
                     }
                 }
             }
