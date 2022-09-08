@@ -451,6 +451,160 @@ namespace cola
       return reachable_vector;
     }
 
+    std::vector<std::pair<complement_mstate, bool>> merge_macrostates(std::vector<std::vector<std::pair<complement_mstate, bool>>> succ, unsigned orig_index, complement_mstate ms, std::vector<unsigned> indices)
+    {
+      std::vector<std::pair<complement_mstate, bool>> successors;
+      unsigned k = 0;
+      unsigned true_index = orig_index;
+      for (auto mstate : succ)
+      {
+        if (k == 0)
+        {
+          // active component
+          for (auto &state : mstate)
+          {
+            bool iw = not state.first.iw_sccs_.empty();
+            bool det = not state.first.acc_detsccs_.empty();
+            state.first.iw_sccs_.resize(ms.iw_sccs_.size());
+            state.first.acc_detsccs_.resize(ms.acc_detsccs_.size());
+            state.first.na_sccs_.resize(ms.na_sccs_.size());
+            if (iw)
+            {
+              if (true_index != 0)
+              {
+                state.first.iw_sccs_[true_index] = state.first.iw_sccs_[0];
+                state.first.iw_sccs_[0].clear();
+              }
+            }
+            else if (det)
+            {
+              if (true_index - ms.iw_sccs_.size() != 0)
+              {
+                state.first.acc_detsccs_[true_index - ms.iw_sccs_.size()] = state.first.acc_detsccs_[0];
+                state.first.acc_detsccs_[0].first.clear();
+                state.first.acc_detsccs_[0].second.clear();
+              }
+            }
+            else
+            {
+              if (true_index - ms.iw_sccs_.size() - ms.acc_detsccs_.size() != 0)
+              {
+                state.first.na_sccs_[true_index - ms.iw_sccs_.size() - ms.acc_detsccs_.size()] = state.first.na_sccs_[0];
+                state.first.na_sccs_[0] = rank_state();
+              }
+            }
+            successors.push_back(state);
+          }
+        }
+        else if (k == 1)
+        {
+          // active + 1 component - track to active
+          true_index = (true_index + 1) % indices.size();
+          std::vector<std::pair<complement_mstate, bool>> new_succ;
+          for (auto &succ : successors)
+          {
+            if (succ.second)
+            {
+              // track to active
+              for (auto &state : mstate)
+              {
+                complement_mstate tmp(succ.first);
+                if (not state.first.iw_sccs_.empty())
+                {
+                  tmp.iw_sccs_[true_index] = state.first.iw_sccs_[0];
+                  tmp.iw_break_set_ = state.first.iw_break_set_;
+                }
+                else if (not state.first.acc_detsccs_.empty())
+                {
+                  tmp.acc_detsccs_[true_index - ms.iw_sccs_.size()] = state.first.acc_detsccs_[0];
+                  tmp.det_break_set_ = state.first.det_break_set_;
+                }
+                else
+                {
+                  tmp.na_sccs_[true_index - ms.iw_sccs_.size() - ms.acc_detsccs_.size()] = state.first.na_sccs_[0];
+                }
+                tmp.active_index_ = ms.active_index_;
+                unsigned i = 0;
+                do
+                {
+                  tmp.active_index_ = indices[(true_index + i) % indices.size()];
+                  i++;
+                } while (is_weakscc(scc_types_, tmp.active_index_) and (not is_accepting_weakscc(scc_types_, tmp.active_index_)));
+                new_succ.push_back({tmp, true});
+              }
+            }
+            else
+              new_succ.push_back(succ);
+          }
+          successors = new_succ;
+        }
+        else if (k == 2)
+        {
+          // active + 1 component - track
+          std::vector<std::pair<complement_mstate, bool>> new_succ;
+          for (auto &succ : successors)
+          {
+            if (not succ.second)
+            {
+              // track
+              for (auto &state : mstate)
+              {
+                complement_mstate tmp(succ.first);
+                if (not state.first.iw_sccs_.empty())
+                {
+                  tmp.iw_sccs_[true_index] = state.first.iw_sccs_[0];
+                }
+                else if (not state.first.acc_detsccs_.empty())
+                {
+                  tmp.acc_detsccs_[true_index - ms.iw_sccs_.size()] = state.first.acc_detsccs_[0];
+                }
+                else
+                {
+                  tmp.na_sccs_[true_index - ms.iw_sccs_.size() - ms.acc_detsccs_.size()] = state.first.na_sccs_[0];
+                }
+                tmp.active_index_ = ms.active_index_;
+                new_succ.push_back({tmp, false});
+              }
+            }
+            else
+              new_succ.push_back(succ);
+          }
+          successors = new_succ;
+        }
+        else
+        {
+          true_index = (true_index + 1) % indices.size();
+          // other components - track
+          std::vector<std::pair<complement_mstate, bool>> new_succ;
+          for (auto &succ : successors)
+          {
+            // track
+            for (auto &state : mstate)
+            {
+              complement_mstate tmp(succ.first);
+              if (not state.first.iw_sccs_.empty())
+              {
+                tmp.iw_sccs_[true_index] = state.first.iw_sccs_[0];
+              }
+              else if (not state.first.acc_detsccs_.empty())
+              {
+                tmp.acc_detsccs_[true_index - ms.iw_sccs_.size()] = state.first.acc_detsccs_[0];
+              }
+              else
+              {
+                tmp.na_sccs_[true_index - ms.iw_sccs_.size() - ms.acc_detsccs_.size()] = state.first.na_sccs_[0];
+              }
+              new_succ.push_back({tmp, succ.second});
+            }
+          }
+          successors = new_succ;
+        }
+        k++;
+      }
+
+      return successors;
+    }
+
     void get_initial_state(complement_mstate &init_state, int &active_index, unsigned &orig_init, std::vector<std::vector<unsigned>> &iw_sccs, std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> &acc_detsccs, std::vector<rank_state> &na_sccs)
     {
       // weak SCCs
@@ -856,160 +1010,12 @@ namespace cola
           }
 
           // combine states
-          std::vector<std::pair<complement_mstate, bool>> successors;
-          // cartesian product
-          unsigned k = 0;
-          true_index = orig_index;
-          for (auto mstate : succ)
-          {
-            if (k == 0)
-            {
-              // active component
-              for (auto &state : mstate)
-              {
-                bool iw = not state.first.iw_sccs_.empty();
-                bool det = not state.first.acc_detsccs_.empty();
-                state.first.iw_sccs_.resize(ms.iw_sccs_.size());
-                state.first.acc_detsccs_.resize(ms.acc_detsccs_.size());
-                state.first.na_sccs_.resize(ms.na_sccs_.size());
-                if (iw)
-                {
-                  if (true_index != 0)
-                  {
-                    state.first.iw_sccs_[true_index] = state.first.iw_sccs_[0];
-                    state.first.iw_sccs_[0].clear();
-                  }
-                }
-                else if (det)
-                {
-                  if (true_index - ms.iw_sccs_.size() != 0)
-                  {
-                    state.first.acc_detsccs_[true_index - ms.iw_sccs_.size()] = state.first.acc_detsccs_[0];
-                    state.first.acc_detsccs_[0].first.clear();
-                    state.first.acc_detsccs_[0].second.clear();
-                  }
-                }
-                else
-                {
-                  if (true_index - ms.iw_sccs_.size() - ms.acc_detsccs_.size() != 0)
-                  {
-                    state.first.na_sccs_[true_index - ms.iw_sccs_.size() - ms.acc_detsccs_.size()] = state.first.na_sccs_[0];
-                    state.first.na_sccs_[0] = rank_state();
-                  }
-                }
-                successors.push_back(state);
-              }
-            }
-            else if (k == 1)
-            {
-              // active + 1 component - track to active
-              true_index = (true_index + 1) % indices.size();
-              std::vector<std::pair<complement_mstate, bool>> new_succ;
-              for (auto &succ : successors)
-              {
-                if (succ.second)
-                {
-                  // track to active
-                  for (auto &state : mstate)
-                  {
-                    complement_mstate tmp(succ.first);
-                    if (not state.first.iw_sccs_.empty())
-                    {
-                      tmp.iw_sccs_[true_index] = state.first.iw_sccs_[0];
-                      tmp.iw_break_set_ = state.first.iw_break_set_;
-                    }
-                    else if (not state.first.acc_detsccs_.empty())
-                    {
-                      tmp.acc_detsccs_[true_index - ms.iw_sccs_.size()] = state.first.acc_detsccs_[0];
-                      tmp.det_break_set_ = state.first.det_break_set_;
-                    }
-                    else
-                    {
-                      tmp.na_sccs_[true_index - ms.iw_sccs_.size() - ms.acc_detsccs_.size()] = state.first.na_sccs_[0];
-                    }
-                    tmp.active_index_ = ms.active_index_;
-                    unsigned i = 0;
-                    do
-                    {
-                      tmp.active_index_ = indices[(true_index + i) % indices.size()];
-                      i++;
-                    } while (is_weakscc(scc_types_, tmp.active_index_) and (not is_accepting_weakscc(scc_types_, tmp.active_index_)));
-                    new_succ.push_back({tmp, true});
-                  }
-                }
-                else
-                  new_succ.push_back(succ);
-              }
-              successors = new_succ;
-            }
-            else if (k == 2)
-            {
-              // active + 1 component - track
-              std::vector<std::pair<complement_mstate, bool>> new_succ;
-              for (auto &succ : successors)
-              {
-                if (not succ.second)
-                {
-                  // track
-                  for (auto &state : mstate)
-                  {
-                    complement_mstate tmp(succ.first);
-                    if (not state.first.iw_sccs_.empty())
-                    {
-                      tmp.iw_sccs_[true_index] = state.first.iw_sccs_[0];
-                    }
-                    else if (not state.first.acc_detsccs_.empty())
-                    {
-                      tmp.acc_detsccs_[true_index - ms.iw_sccs_.size()] = state.first.acc_detsccs_[0];
-                    }
-                    else
-                    {
-                      tmp.na_sccs_[true_index - ms.iw_sccs_.size() - ms.acc_detsccs_.size()] = state.first.na_sccs_[0];
-                    }
-                    tmp.active_index_ = ms.active_index_;
-                    new_succ.push_back({tmp, false});
-                  }
-                }
-                else
-                  new_succ.push_back(succ);
-              }
-              successors = new_succ;
-            }
-            else
-            {
-              true_index = (true_index + 1) % indices.size();
-              // other components - track
-              std::vector<std::pair<complement_mstate, bool>> new_succ;
-              for (auto &succ : successors)
-              {
-                // track
-                for (auto &state : mstate)
-                {
-                  complement_mstate tmp(succ.first);
-                  if (not state.first.iw_sccs_.empty())
-                  {
-                    tmp.iw_sccs_[true_index] = state.first.iw_sccs_[0];
-                  }
-                  else if (not state.first.acc_detsccs_.empty())
-                  {
-                    tmp.acc_detsccs_[true_index - ms.iw_sccs_.size()] = state.first.acc_detsccs_[0];
-                  }
-                  else
-                  {
-                    tmp.na_sccs_[true_index - ms.iw_sccs_.size() - ms.acc_detsccs_.size()] = state.first.na_sccs_[0];
-                  }
-                  new_succ.push_back({tmp, succ.second});
-                }
-              }
-              successors = new_succ;
-            }
-            k++;
-          }
+          std::vector<std::pair<complement_mstate, bool>> successors = merge_macrostates(succ, orig_index, ms, indices);
 
           for (unsigned i = 0; i < successors.size(); i++)
           {
             successors[i].first.curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
-            
+
             if (std::find(all_states.begin(), all_states.end(), successors[i].first) == all_states.end())
             {
               all_states.push_back(successors[i].first);
