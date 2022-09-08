@@ -2,7 +2,7 @@
 
 namespace cola
 {
-     bool
+    bool
     complement_mstate::operator<(const complement_mstate &other) const
     {
         if (active_index_ == other.active_index_)
@@ -70,44 +70,12 @@ namespace cola
         return true;
     }
 
-    int complement_mstate::get_max_rank() const
-    {
-        return -1;
-    }
-
     std::set<unsigned>
     complement_mstate::get_reach_set() const
     {
         return std::set<unsigned>(curr_reachable_.begin(), curr_reachable_.end());
     }
 
-    bool complement_mstate::is_empty() const
-    {
-        if (!weak_set_.empty())
-        {
-            return false;
-        }
-        for (unsigned i = 0; i < detscc_ranks_.size(); i++)
-        {
-            if (!detscc_ranks_[i].empty())
-            {
-                return false;
-            }
-        }
-
-        if (!nondetscc_ranks_.empty())
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    std::set<unsigned>
-    complement_mstate::get_weak_set() const
-    {
-        return weak_set_;
-    }
 
     size_t
     complement_mstate::hash() const
