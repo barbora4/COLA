@@ -251,7 +251,7 @@ namespace cola
             {
                 rank_state new_state;
                 new_state.track = false;
-                new_state.f = ret[0].first.na_sccs_[true_index_].f;
+                new_state.f = ret[0].first.na_sccs_[0].f;
                 new_state.i = 0;
                 for (auto pr : new_state.f)
                 {
@@ -315,7 +315,7 @@ namespace cola
             std::vector<std::pair<complement_mstate, bool>> ret = get_succ_track();
             if (ret.size() > 0)
             {
-                ranking g = ret[0].first.na_sccs_[true_index_].f;
+                ranking g = ret[0].first.na_sccs_[0].f;
 
                 std::vector<rank_state> eta_3;
                 std::vector<rank_state> eta_4;

@@ -20,7 +20,5 @@ namespace cola
         std::vector<std::pair<complement_mstate, bool>> get_succ_active();
         std::vector<std::pair<complement_mstate, bool>> get_succ_track();
         std::vector<std::pair<complement_mstate, bool>> get_succ_track_to_active();
-
-        // void csb_successors(const std::vector<state_rank> &curr_det_states, int scc_index, std::vector<int> &next_scc_indices, std::vector<std::map<unsigned, int>> &succ_maps, std::vector<bool> &acc_succs, std::set<unsigned> &next_detstates, std::unordered_map<unsigned, std::vector<std::pair<bool, unsigned>>> &det_cache, unsigned active_index);
     };
 }

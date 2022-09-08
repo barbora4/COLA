@@ -1009,7 +1009,7 @@ namespace cola
           for (unsigned i = 0; i < successors.size(); i++)
           {
             successors[i].first.curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
-
+            
             if (std::find(all_states.begin(), all_states.end(), successors[i].first) == all_states.end())
             {
               all_states.push_back(successors[i].first);
