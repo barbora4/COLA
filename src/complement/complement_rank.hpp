@@ -12,7 +12,7 @@ namespace cola
         std::vector<std::set<unsigned>> predecessors_;
 
     public:
-        rank_comp(const spot::const_twa_graph_ptr aut, std::vector<unsigned> scc_index, spot::scc_info &scc_info, complement_mstate &mstate, compl_decomp_options decomp_options, bdd symbol, unsigned true_index, std::vector<std::pair<unsigned, unsigned>> dir_sim, std::vector<std::set<int>> reachable_vector, std::vector<bool> is_accepting) : complement_class(aut, scc_index, scc_info, mstate, decomp_options, symbol, true_index, dir_sim, reachable_vector, is_accepting)
+        rank_comp(const spot::const_twa_graph_ptr aut, std::vector<unsigned> scc_index, spot::scc_info &scc_info, compl_decomp_options decomp_options, unsigned true_index, std::vector<std::pair<unsigned, unsigned>> dir_sim, std::vector<std::set<int>> reachable_vector, std::vector<bool> is_accepting) : complement_class(aut, scc_index, scc_info, decomp_options, true_index, dir_sim, reachable_vector, is_accepting)
         {
             std::vector<std::set<unsigned>> predecessors(reachable_vector_.size());
             for (unsigned i = 0; i < reachable_vector.size(); i++)
@@ -29,11 +29,11 @@ namespace cola
             predecessors_ = predecessors;
         }
 
-        complement_mstate getInit() { return complement_mstate(scc_info_, 0); };
+        complement_mstate getInit() { return complement_mstate(scc_info_); };
 
-        std::vector<std::pair<complement_mstate, bool>> get_succ_active();
-        std::vector<std::pair<complement_mstate, bool>> get_succ_track();
-        std::vector<std::pair<complement_mstate, bool>> get_succ_track_to_active();
+        std::vector<std::pair<complement_mstate, bool>> get_succ_active(complement_mstate mstate, bdd symbol);
+        std::vector<std::pair<complement_mstate, bool>> get_succ_track(complement_mstate mstate, bdd symbol);
+        std::vector<std::pair<complement_mstate, bool>> get_succ_track_to_active(complement_mstate mstate, bdd symbol);
 
         std::set<int> get_successors_with_box(std::set<unsigned> reachable, rank_state state, bdd letter, unsigned scc_index);
 

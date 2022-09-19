@@ -32,10 +32,10 @@ src_libcola_la_LIBADD = -L$(SPOTPREFIX)/lib -lspot -lbddx
 src_libcola_la_SOURCES =			\
   src/cola.hpp			\
   src/cola.cpp			\
-  src/complement_mstate.hpp     \
-  src/complement_mstate.cpp \
-  src/complement_class.hpp      \
-  src/complement_class.cpp \
+  src/complement/complement_mstate.hpp     \
+  src/complement/complement_mstate.cpp \
+  src/complement/complement_class.hpp      \
+  src/complement/complement_class.cpp \
   src/complement_tnba.cpp				\
   src/composer.cpp				\
   src/composer.hpp				\
@@ -54,14 +54,14 @@ src_libcola_la_SOURCES =			\
   src/simulation.cpp			\
   src/simulation.hpp			\
   src/types.hpp           \
-  src/rankings.hpp        \
-  src/rankings.cpp        \
-  src/dataflow.hpp        \
-  src/complement_mh.hpp   \
-  src/complement_mh.cpp   \
-  src/complement_ncsb.hpp  \
-  src/complement_ncsb.cpp  \
-  src/complement_rank.hpp  \
-  src/complement_rank.cpp
+  src/complement/rankings.hpp        \
+  src/complement/rankings.cpp        \
+  src/complement/dataflow.hpp        \
+  src/complement/complement_mh.hpp   \
+  src/complement/complement_mh.cpp   \
+  src/complement/complement_ncsb.hpp  \
+  src/complement/complement_ncsb.cpp  \
+  src/complement/complement_rank.hpp  \
+  src/complement/complement_rank.cpp
 
 cola_SOURCES = src/main.cpp

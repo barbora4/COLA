@@ -74,6 +74,8 @@ struct compl_decomp_options
   bool dir_sim = true;
   bool sat = true;
   bool dataflow = false;
+  bool debug = false;
+  bool print_hoa = false;
 };
 
 namespace cola

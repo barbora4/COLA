@@ -107,6 +107,8 @@ Decomposition-based complementation:
     --scc-high            SCC compl with high postprocessing before intersection
     --no-sat              No saturation of accepting states/transitions
     --dataflow            Data flow analysis in rank-based complementation
+    --debug               Print state names
+    --print-hoa           Print preprocessed automaton in HOA
 
 Pre- and Post-processing:
     --preprocess=[0|1|2|3]       Level for simplifying the input automaton (default=1)
@@ -509,6 +511,14 @@ int main(int argc, char *argv[])
     else if (arg == "--dataflow")
     {
       decomp_options.dataflow = true;
+    }
+    else if (arg == "--debug")
+    {
+      decomp_options.debug = true;
+    }
+    else if (arg == "--print-hoa")
+    {
+      decomp_options.print_hoa = true;
     }
     else if (arg == "-f")
     {

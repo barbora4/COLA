@@ -9,12 +9,6 @@ namespace cola
     class complement_mstate
     {
     public:
-        // the number of states num, default values, and number of NACs
-        complement_mstate(spot::scc_info &si, unsigned num_det_sccs)
-            : si_(si)
-        {
-        }
-
         complement_mstate(spot::scc_info &si) : si_(si){}
 
         complement_mstate(const complement_mstate &other)
