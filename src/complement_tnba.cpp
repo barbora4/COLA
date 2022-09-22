@@ -601,6 +601,44 @@ namespace cola
       return successors;
     }
 
+    void
+    prune_macrostate(complement_mstate &mstate)
+    {
+      // simulation on currently reachable states
+      auto reachable_vector_ = get_reachable_vector();
+
+      std::set<unsigned> aux_reach(mstate.curr_reachable_.begin(), mstate.curr_reachable_.end());
+
+      for (auto pr : dir_sim_)
+      {
+        if (pr.first != pr.second and aux_reach.find(pr.first) != aux_reach.end() and aux_reach.find(pr.second) != aux_reach.end() and reachable_vector_[pr.second].find(pr.first) == reachable_vector_[pr.second].end())
+          aux_reach.erase(pr.first);
+      }
+
+      mstate.curr_reachable_ = std::vector<unsigned>(aux_reach.begin(), aux_reach.end());
+
+      // IW SCCS
+      for (auto &states : mstate.iw_sccs_)
+      {
+        std::set_intersection(aux_reach.begin(), aux_reach.end(), states.begin(), states.end(), std::inserter(states, states.begin()));
+      }
+
+      // DET SCCS
+      for (auto &states : mstate.acc_detsccs_)
+      {
+        std::set_intersection(aux_reach.begin(), aux_reach.end(), states.first.begin(), states.first.end(), std::inserter(states.first, states.first.begin()));
+        std::set_intersection(aux_reach.begin(), aux_reach.end(), states.second.begin(), states.second.end(), std::inserter(states.second, states.second.begin()));
+      }
+
+      // IW BREAK SET
+      std::set_intersection(aux_reach.begin(), aux_reach.end(), mstate.iw_break_set_.begin(), mstate.iw_break_set_.end(), std::inserter(mstate.iw_break_set_, mstate.iw_break_set_.begin()));
+
+      // DET BREAK SET
+      std::set_intersection(aux_reach.begin(), aux_reach.end(), mstate.det_break_set_.begin(), mstate.det_break_set_.end(), std::inserter(mstate.det_break_set_, mstate.det_break_set_.begin()));
+
+      // NA SCCS
+    }
+
     void get_initial_state(complement_mstate &init_state, int &active_index, unsigned &orig_init, std::vector<std::vector<unsigned>> &iw_sccs, std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> &acc_detsccs, std::vector<rank_state> &na_sccs)
     {
       // weak SCCs
@@ -964,7 +1002,7 @@ namespace cola
 
               else
               {
-                succ.push_back(ncsb.get_succ_track(ms, letter)); 
+                succ.push_back(ncsb.get_succ_track(ms, letter));
               }
             }
             else
@@ -984,7 +1022,7 @@ namespace cola
 
               else
               {
-                succ.push_back(rank.get_succ_track(ms, letter)); 
+                succ.push_back(rank.get_succ_track(ms, letter));
               }
             }
           }
@@ -995,6 +1033,10 @@ namespace cola
           for (unsigned i = 0; i < successors.size(); i++)
           {
             successors[i].first.curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
+
+            // simulation
+            if (decomp_options_.iw_sim)
+              prune_macrostate(successors[i].first);  
 
             if (std::find(all_states.begin(), all_states.end(), successors[i].first) == all_states.end())
             {
@@ -1018,107 +1060,6 @@ namespace cola
                 std::cerr << "Accepting" << std::endl;
             }
           }
-
-          //       if (decomp_options_.iw_sim)
-          //       {
-          //         // simulation on currently reachable states
-          //         std::set<unsigned> aux_reach(all_succ.begin(), all_succ.end());
-          //         std::set<unsigned> new_reach;
-          //         for (auto state : all_succ)
-          //         {
-          //           if (not is_weakscc(scc_types_, scc_info.scc_of(state)))
-          //           {
-          //             aux_reach.erase(state);
-          //             new_reach.insert(state);
-          //           }
-          //         }
-
-          //         for (auto pr : dir_sim_)
-          //         {
-          //           if (pr.first != pr.second and aux_reach.find(pr.first) != aux_reach.end() and aux_reach.find(pr.second) != aux_reach.end() and reachable_vector[pr.second].find(pr.first) == reachable_vector[pr.second].end())
-          //             aux_reach.erase(pr.first);
-          //         }
-
-          //         aux_reach.insert(new_reach.begin(), new_reach.end());
-
-          //         new_succ[i].curr_reachable_ = std::vector<unsigned>(aux_reach.begin(), aux_reach.end());
-          //       }
-          //       else
-          //       {
-          //         new_succ[i].curr_reachable_ = std::vector<unsigned>(all_succ.begin(), all_succ.end());
-          //       }
-
-          //       if (is_weakscc(scc_types_, new_succ[i].active_index_) and not decomp_options_.tgba)
-          //       {
-          //         new_succ[i].det_break_set_.clear();
-          //       }
-
-          //       // det sim
-          //       if (is_accepting_detscc(scc_types_, new_succ[i].active_index_) and decomp_options_.merge_det and decomp_options_.det_sim)
-          //       {
-          //         // remove smaller states from S
-
-          //         // all reachable states
-          //         std::set<unsigned> new_S;
-          //         for (auto item : new_succ[i].acc_detsccs_)
-          //         {
-          //           new_S.insert(item.first.begin(), item.first.end());
-          //           new_S.insert(item.second.begin(), item.second.end());
-          //         }
-
-          //         for (auto pr : dir_sim_)
-          //         {
-          //           if (pr.first != pr.second and new_S.find(pr.first) != new_S.end() and new_S.find(pr.second) != new_S.end())
-          //           {
-          //             // reachability check
-          //             if (reachable_vector[pr.first].find(pr.second) != reachable_vector[pr.first].end() and reachable_vector[pr.second].find(pr.first) == reachable_vector[pr.second].end())
-          //             {
-          //               // both states in S -> we can remove the smaller one from S
-          //               new_S.erase(pr.first);
-          //             }
-          //           }
-          //         }
-
-          //         // erase state if not in new_S
-          //         for (auto &item : new_succ[i].acc_detsccs_)
-          //         {
-          //           std::vector<unsigned> result;
-          //           std::set_intersection(item.first.begin(), item.first.end(), new_S.begin(), new_S.end(), std::back_inserter(result));
-          //           item.first = result;
-
-          //           std::vector<unsigned> result2;
-          //           std::set_intersection(item.second.begin(), item.second.end(), new_S.begin(), new_S.end(), std::back_inserter(result2));
-          //           item.second = result2;
-          //         }
-          //         // erase state from B if not in new_S
-          //         std::vector<unsigned> result;
-          //         std::set_intersection(new_succ[i].det_break_set_.begin(), new_succ[i].det_break_set_.end(), new_S.begin(), new_S.end(), std::back_inserter(result));
-          //         new_succ[i].det_break_set_ = result;
-          //       }
-
-          //       // std::cerr << "New succ: " << get_name(new_succ[i]) << std::endl;
-          //       if (std::find(all_states.begin(), all_states.end(), new_succ[i]) == all_states.end())
-          //       {
-          //         all_states.push_back(new_succ[i]);
-          //         auto s = new_state(new_succ[i]);
-          //       }
-
-          //       auto p = rank2n_.emplace(new_succ[i], 0);
-          //       if (active_type and not acc_edge and active_iw)
-          //       {
-          //         res_->new_edge(top.second, p.first->second, letter);
-          //         // std::cerr << "Nonaccepting" << std::endl;
-          //       }
-          //       else
-          //       {
-          //         res_->new_edge(top.second, p.first->second, letter, {0});
-          //         // std::cerr << "Accepting" << std::endl;
-          //       }
-
-          //       if (decomp_options_.tgba and ms.iw_break_set_.size() == 0)
-          //         res_->new_edge(top.second, p.first->second, letter, {1});
-          //     }
-          //}
         }
       }
 

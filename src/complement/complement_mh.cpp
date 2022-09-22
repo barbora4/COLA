@@ -58,8 +58,8 @@ namespace cola
         std::set_intersection(all_succ.begin(), all_succ.end(), scc_states.begin(), scc_states.end(), std::back_inserter(succ_in_scc));
 
         // simulation
-        if (decomp_options_.iw_sim)
-            prune_track(succ_in_scc);
+        //if (decomp_options_.iw_sim)
+        //    prune_track(succ_in_scc);
 
         complement_mstate succ_state(scc_info_);
         succ_state.iw_sccs_.push_back(succ_in_scc);
@@ -91,8 +91,8 @@ namespace cola
         }
 
         // simulation
-        if (decomp_options_.iw_sim)
-            prune_active(succ_in_scc, new_break_set);
+        //if (decomp_options_.iw_sim)
+        //    prune_active(succ_in_scc, new_break_set);
 
         complement_mstate succ_state(scc_info_);
         succ_state.iw_sccs_.push_back(std::vector<unsigned>(succ_in_scc.begin(), succ_in_scc.end()));
@@ -152,8 +152,8 @@ namespace cola
             std::set_intersection(break_set_succ.begin(), break_set_succ.end(), states_in_sccs.begin(), states_in_sccs.end(), std::inserter(new_break_set, new_break_set.begin()));
 
             // simulation
-            if (decomp_options_.iw_sim)
-                prune_active(succ_in_scc, new_break_set);
+            //if (decomp_options_.iw_sim)
+            //    prune_active(succ_in_scc, new_break_set);
 
             // no state with empty break set (tba)
             if (new_break_set.size() == 0)

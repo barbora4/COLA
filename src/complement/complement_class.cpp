@@ -2,7 +2,7 @@
 
 namespace cola
 {
-    std::set<unsigned> 
+    std::set<unsigned>
     complement_class::get_all_successors(std::vector<unsigned> current_states, bdd symbol)
     {
         std::set<unsigned> successors;
@@ -21,7 +21,7 @@ namespace cola
         return successors;
     }
 
-    std::set<unsigned> 
+    std::set<unsigned>
     complement_class::get_all_successors_in_scc(std::vector<unsigned> current_states, bdd symbol)
     {
         std::set<unsigned> successors;
@@ -41,7 +41,7 @@ namespace cola
         return successors;
     }
 
-    std::set<unsigned> 
+    std::set<unsigned>
     complement_class::get_all_successors_in_scc_same(std::vector<unsigned> current_states, bdd symbol)
     {
         std::set<unsigned> successors;
@@ -83,7 +83,7 @@ namespace cola
         return successors;
     }
 
-    std::set<int> 
+    std::set<int>
     complement_class::get_all_successors_acc(std::set<unsigned> current_states, bdd symbol, unsigned scc_index)
     {
         std::set<int> successors;
@@ -104,7 +104,7 @@ namespace cola
         return successors;
     }
 
-    std::set<unsigned> 
+    std::set<unsigned>
     complement_class::get_all_successors(std::set<unsigned> current_states, bdd symbol)
     {
         std::set<unsigned> successors;
