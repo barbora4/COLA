@@ -29,8 +29,9 @@ namespace cola
             predecessors_ = predecessors;
         }
 
-        complement_mstate getInit() { return complement_mstate(scc_info_); };
-
+        complement_mstate get_init_track();
+        complement_mstate get_init_active();
+        
         std::vector<std::pair<complement_mstate, bool>> get_succ_active(complement_mstate mstate, bdd symbol);
         std::vector<std::pair<complement_mstate, bool>> get_succ_track(complement_mstate mstate, bdd symbol);
         std::vector<std::pair<complement_mstate, bool>> get_succ_track_to_active(complement_mstate mstate, bdd symbol);

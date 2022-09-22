@@ -44,6 +44,33 @@ namespace cola
         succ_in_scc = new_S;
     }
 
+    complement_mstate
+    mh_compl::get_init_track()
+    {
+        complement_mstate mstate(scc_info_);
+
+        unsigned orig_init = aut_->get_init_state_number();
+        mstate.curr_reachable_.push_back(orig_init);
+
+        mstate.iw_sccs_.push_back(std::vector<unsigned>()); 
+    
+        return mstate;  
+    }
+    
+    complement_mstate
+    mh_compl::get_init_active()
+    {
+        complement_mstate mstate(scc_info_);
+
+        unsigned orig_init = aut_->get_init_state_number();
+        mstate.curr_reachable_.push_back(orig_init);
+
+        mstate.iw_sccs_.push_back(std::vector<unsigned>(1, orig_init));
+        mstate.iw_break_set_ = std::vector<unsigned>(1, orig_init); 
+    
+        return mstate;  
+    }
+    
     std::vector<std::pair<complement_mstate, bool>> mh_compl::get_succ_track(complement_mstate mstate, bdd symbol)
     {
         std::vector<std::pair<complement_mstate, bool>> succ;

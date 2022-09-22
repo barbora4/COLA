@@ -161,6 +161,36 @@ namespace cola
         return succ_rankings;
     }
 
+    complement_mstate
+    rank_comp::get_init_track()
+    {
+        complement_mstate mstate(scc_info_);
+
+        unsigned orig_init = aut_->get_init_state_number();
+        mstate.curr_reachable_.push_back(orig_init);
+
+        rank_state tmp;
+        tmp.reachable.insert(-1); 
+        mstate.na_sccs_.push_back(tmp); 
+
+        return mstate;
+    }
+
+    complement_mstate
+    rank_comp::get_init_active()
+    {
+        complement_mstate mstate(scc_info_);
+
+        unsigned orig_init = aut_->get_init_state_number();
+        mstate.curr_reachable_.push_back(orig_init);
+
+        rank_state tmp;
+        tmp.reachable.insert(orig_init); 
+        mstate.na_sccs_.push_back(tmp); 
+
+        return mstate;
+    }
+
     std::vector<std::pair<complement_mstate, bool>>
     rank_comp::get_succ_track(complement_mstate mstate, bdd symbol)
     {
@@ -412,7 +442,7 @@ namespace cola
                 {
                     complement_mstate tmp_mstate(scc_info_);
                     tmp_mstate.na_sccs_.push_back(eta_4[0]);
-                    succ.push_back({tmp_mstate, false}); 
+                    succ.push_back({tmp_mstate, false});
                 }
 
                 for (rank_state s : U)
