@@ -9,6 +9,8 @@
 
 namespace cola
 {
+    const int BOX = -1;
+    
     class ranking : public std::map<int, int>
     {   
         private:

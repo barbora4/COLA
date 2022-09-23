@@ -58,6 +58,8 @@
 
 namespace cola
 {
+  const int SINK_STATE = -1;
+
   // complementation Buchi automata
   class tnba_complement
   {
@@ -689,7 +691,7 @@ namespace cola
         if (index != active_index or si_.scc_of(orig_init) != active_index)
         {
           rank_state tmp;
-          tmp.reachable.insert(-1);
+          tmp.reachable.insert(BOX);
           na_sccs.push_back(tmp);
         }
         else
@@ -779,6 +781,59 @@ namespace cola
       int active_index = scc_info.scc_of(orig_init);
       get_initial_index(init_state, active_index);
 
+      std::vector<std::set<int>> reachable_vector = get_reachable_vector();
+
+      // scc indices
+      std::vector<unsigned> indices;
+      if (not decomp_options_.merge_iwa)
+        indices.insert(indices.end(), this->weaksccs_.begin(), this->weaksccs_.end());
+      else if (this->weaksccs_.size() > 0)
+        indices.push_back(this->weaksccs_[0]);
+      if (not decomp_options_.merge_det)
+        indices.insert(indices.end(), this->acc_detsccs_.begin(), this->acc_detsccs_.end());
+      else if (this->acc_detsccs_.size() > 0)
+        indices.push_back(this->acc_detsccs_[0]);
+      if (this->acc_nondetsccs_.size() > 0)
+        indices.insert(indices.end(), this->acc_nondetsccs_.begin(), this->acc_nondetsccs_.end());
+
+      std::vector<std::vector<unsigned>> ind;
+      if (not decomp_options_.merge_iwa)
+      {
+        for (auto i : this->weaksccs_)
+          ind.push_back(std::vector<unsigned>(1, i));
+      }
+      else
+      {
+        ind.push_back(this->weaksccs_);
+      }
+      if (not decomp_options_.merge_det)
+      {
+        for (auto i : this->acc_detsccs_)
+          ind.push_back(std::vector<unsigned>(1, i));
+      }
+      else
+      {
+        ind.push_back(this->acc_detsccs_);
+      }
+      for (auto i : this->acc_nondetsccs_)
+      {
+        ind.push_back(std::vector<unsigned>(1, i));
+      }
+
+      std::vector<complement_class *> scc_objects;
+      unsigned true_index = 0; // TODO remove true_index from classes
+      for (auto index : ind)
+      {
+        if (is_weakscc(scc_types_, index[0]))
+          scc_objects.push_back(new mh_compl(aut_, index, scc_info, decomp_options_, true_index, dir_sim_, reachable_vector, is_accepting_));
+
+        else if (is_accepting_detscc(scc_types_, index[0]))
+          scc_objects.push_back(new ncsb_compl(aut_, index, scc_info, decomp_options_, true_index, dir_sim_, reachable_vector, is_accepting_));
+
+        else
+          scc_objects.push_back(new rank_compl(aut_, index, scc_info, decomp_options_, true_index, dir_sim_, reachable_vector, is_accepting_));
+      }
+
       std::vector<complement_mstate> all_states;
       std::vector<std::vector<unsigned>> iw_sccs;
       std::vector<std::pair<std::vector<unsigned>, std::vector<unsigned>>> acc_detsccs;
@@ -794,8 +849,6 @@ namespace cola
 
       all_states.push_back(init_state);
 
-      std::vector<std::set<int>> reachable_vector = get_reachable_vector();
-
       bool sink_state = false;
       bool is_empty = aut_->is_empty();
 
@@ -806,7 +859,7 @@ namespace cola
         complement_mstate ms = top.first;
 
         // no successors for sink state
-        if (ms.active_index_ == -1)
+        if (ms.active_index_ == SINK_STATE)
           continue;
 
         if (decomp_options_.debug)
@@ -840,7 +893,7 @@ namespace cola
         {
           // direct the rest to sink state
           complement_mstate succ(si_);
-          succ.active_index_ = -1;
+          succ.active_index_ = SINK_STATE;
           auto sink = new_state(succ);
           // empty state use 0 as well as the weak ones
           res_->new_edge(top.second, sink, !all);
@@ -895,19 +948,6 @@ namespace cola
             acc_det_succ.push_back({std::vector<unsigned>(), std::vector<unsigned>()});
           }
 
-          // scc indices
-          std::vector<unsigned> indices;
-          if (not decomp_options_.merge_iwa)
-            indices.insert(indices.end(), this->weaksccs_.begin(), this->weaksccs_.end());
-          else if (this->weaksccs_.size() > 0)
-            indices.push_back(this->weaksccs_[0]);
-          if (not decomp_options_.merge_det)
-            indices.insert(indices.end(), this->acc_detsccs_.begin(), this->acc_detsccs_.end());
-          else if (this->acc_detsccs_.size() > 0)
-            indices.push_back(this->acc_detsccs_[0]);
-          if (this->acc_nondetsccs_.size() > 0)
-            indices.insert(indices.end(), this->acc_nondetsccs_.begin(), this->acc_nondetsccs_.end());
-
           // index of value active_index
           auto it = std::find(indices.begin(), indices.end(), active_index);
           unsigned true_index = std::distance(indices.begin(), it);
@@ -920,25 +960,9 @@ namespace cola
 
           std::vector<std::vector<std::pair<complement_mstate, bool>>> succ;
 
-          for (unsigned i = 0; i < indices.size(); i++)
+          unsigned i = 0;
+          for (auto index : ind)
           {
-            true_index = (orig_index + i) % indices.size();
-
-            std::vector<unsigned> index;
-            if (decomp_options_.merge_iwa and is_weakscc(scc_types_, indices[true_index]))
-              index.insert(index.end(), weaksccs_.begin(), weaksccs_.end());
-            else if (decomp_options_.merge_det and is_accepting_detscc(scc_types_, indices[true_index]))
-              index.insert(index.end(), acc_detsccs_.begin(), acc_detsccs_.end());
-            else
-              index.push_back(indices[true_index]);
-
-            // merge iwa
-            if (decomp_options_.merge_iwa and is_weakscc(scc_types_, index[0]) and iwa_done)
-              continue;
-            // merge det
-            if (decomp_options_.merge_det and is_accepting_detscc(scc_types_, index[0]) and det_done)
-              continue;
-
             // reachable states in this scc
             std::set<unsigned> reach_track;
             std::set<unsigned> scc_states;
@@ -969,62 +993,19 @@ namespace cola
             bool active_scc = not(std::find(index.begin(), index.end(), active_index) == index.end() and (not decomp_options_.tgba or not is_weakscc(scc_types_, index[0])));
             bool next_to_active = (true_index == (orig_index + 1) % indices.size());
 
-            if (is_weakscc(scc_types_, index[0]))
+            if (active_scc)
+              succ.push_back(scc_objects[i]->get_succ_active(ms, letter));
+
+            else if (next_to_active)
             {
-              mh_compl mhc(aut_, index, scc_info, decomp_options_, true_index, dir_sim_, reachable_vector, is_accepting_);
-
-              if (active_scc)
-                succ.push_back(mhc.get_succ_active(ms, letter));
-
-              else if (next_to_active)
-              {
-                succ.push_back(mhc.get_succ_track_to_active(ms, letter));
-                succ.push_back(mhc.get_succ_track(ms, letter));
-              }
-
-              else
-                succ.push_back(mhc.get_succ_track(ms, letter));
+              succ.push_back(scc_objects[i]->get_succ_track_to_active(ms, letter));
+              succ.push_back(scc_objects[i]->get_succ_track(ms, letter));
             }
-            else if (is_accepting_detscc(scc_types_, index[0]))
-            {
-              ncsb_compl ncsb(aut_, index, scc_info, decomp_options_, true_index - ms.iw_sccs_.size(), dir_sim_, reachable_vector, is_accepting_);
 
-              if (active_scc)
-              {
-                succ.push_back(ncsb.get_succ_active(ms, letter));
-              }
-
-              else if (next_to_active)
-              {
-                succ.push_back(ncsb.get_succ_track_to_active(ms, letter));
-                succ.push_back(ncsb.get_succ_track(ms, letter));
-              }
-
-              else
-              {
-                succ.push_back(ncsb.get_succ_track(ms, letter));
-              }
-            }
             else
-            {
-              rank_comp rank(aut_, index, scc_info, decomp_options_, true_index - ms.iw_sccs_.size() - ms.acc_detsccs_.size(), dir_sim_, reachable_vector, is_accepting_);
+              succ.push_back(scc_objects[i]->get_succ_track(ms, letter));
 
-              if (active_scc)
-              {
-                succ.push_back(rank.get_succ_active(ms, letter));
-              }
-
-              else if (next_to_active)
-              {
-                succ.push_back(rank.get_succ_track_to_active(ms, letter));
-                succ.push_back(rank.get_succ_track(ms, letter));
-              }
-
-              else
-              {
-                succ.push_back(rank.get_succ_track(ms, letter));
-              }
-            }
+            i++;
           }
 
           // combine states
@@ -1036,7 +1017,7 @@ namespace cola
 
             // simulation
             if (decomp_options_.iw_sim)
-              prune_macrostate(successors[i].first);  
+              prune_macrostate(successors[i].first);
 
             if (std::find(all_states.begin(), all_states.end(), successors[i].first) == all_states.end())
             {

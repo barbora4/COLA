@@ -54,11 +54,11 @@ namespace cola
             {
                 // check box
                 int max_rank = -1;
-                if (r.find(-1) != r.end())
+                if (r.find(BOX) != r.end())
                 {
-                    if (r.get_max_rank() != r[-1])
+                    if (r.get_max_rank() != r[BOX])
                         skip = true;
-                    max_rank = r[-1];
+                    max_rank = r[BOX];
                 }
 
                 if (not skip)
@@ -66,7 +66,7 @@ namespace cola
                     std::set<int> ranks;
                     for (auto pr : r)
                     {
-                        if (pr.first != -1 and pr.second == max_rank)
+                        if (pr.first != BOX and pr.second == max_rank)
                         {
                             skip = true;
                             break;
