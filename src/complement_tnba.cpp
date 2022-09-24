@@ -449,6 +449,36 @@ namespace cola
       return reachable_vector;
     }
 
+    complement_mstate merge_initial_states(std::vector<complement_mstate> initial_states)
+    {
+      complement_mstate ret(si_);
+
+      if (not initial_states.empty())
+        ret.curr_reachable_ = initial_states[0].curr_reachable_;
+
+      for (auto state : initial_states)
+      {
+        if (not state.iw_sccs_.empty())
+        {
+          ret.iw_sccs_.push_back(state.iw_sccs_[0]);
+          if (not state.iw_break_set_.empty())
+            ret.iw_break_set_ = state.iw_break_set_;  
+        }
+        else if (not state.acc_detsccs_.empty())
+        {
+          ret.acc_detsccs_.push_back(state.acc_detsccs_[0]);
+          if (not state.det_break_set_.empty())
+            ret.det_break_set_ = state.det_break_set_;
+        }
+        else if (not state.na_sccs_.empty())
+        {
+          ret.na_sccs_.push_back(state.na_sccs_[0]);
+        }
+      }
+
+      return ret;
+    }
+
     std::vector<std::pair<complement_mstate, bool>> merge_macrostates(std::vector<std::vector<std::pair<complement_mstate, bool>>> succ, unsigned orig_index, complement_mstate ms, std::vector<unsigned> indices)
     {
       std::vector<std::pair<complement_mstate, bool>> successors;
@@ -774,13 +804,6 @@ namespace cola
                   << std::endl;
       }
 
-      // initial macrostate
-      auto scc_info = get_scc_info();
-      complement_mstate init_state(scc_info);
-      unsigned orig_init = aut_->get_init_state_number();
-      int active_index = scc_info.scc_of(orig_init);
-      get_initial_index(init_state, active_index);
-
       std::vector<std::set<int>> reachable_vector = get_reachable_vector();
 
       // scc indices
@@ -820,6 +843,13 @@ namespace cola
         ind.push_back(std::vector<unsigned>(1, i));
       }
 
+      // initial macrostate
+      auto scc_info = get_scc_info();
+      complement_mstate init_state(scc_info);
+      unsigned orig_init = aut_->get_init_state_number();
+      int active_index = scc_info.scc_of(orig_init);
+      get_initial_index(init_state, active_index);
+
       std::vector<complement_class *> scc_objects;
       unsigned true_index = 0; // TODO remove true_index from classes
       for (auto index : ind)
@@ -840,7 +870,17 @@ namespace cola
       std::vector<rank_state> na_sccs;
       bool acc_edge = false;
 
-      get_initial_state(init_state, active_index, orig_init, iw_sccs, acc_detsccs, na_sccs);
+      std::vector<complement_mstate> init_states;
+      unsigned j=0;
+      for (auto index : ind)
+      {
+        if (index[0] == active_index)
+          init_states.push_back(scc_objects[j]->get_init_active());
+        else
+          init_states.push_back(scc_objects[j]->get_init_track());
+        j++;
+      }
+      init_state = merge_initial_states(init_states);
 
       if (decomp_options_.debug)
         std::cerr << "Initial: " << get_name(init_state) << std::endl;
@@ -951,7 +991,7 @@ namespace cola
           // index of value active_index
           auto it = std::find(indices.begin(), indices.end(), active_index);
           unsigned true_index = std::distance(indices.begin(), it);
-          unsigned orig_index = true_index;
+          unsigned orig_index = true_index; 
 
           std::vector<complement_mstate> succ_det;
 
@@ -960,20 +1000,28 @@ namespace cola
 
           std::vector<std::vector<std::pair<complement_mstate, bool>>> succ;
 
-          unsigned i = 0;
-          for (auto index : ind)
+          unsigned start = 0;
+          for (unsigned i=0; i<ind.size(); i++)
           {
+            if (std::find(ind[i].begin(), ind[i].end(), active_index) != ind[i].end())
+              start = i;
+          }
+
+          unsigned i=0;
+          for (unsigned j=0; j<ind.size(); j++)
+          {
+            i = (j+start)%ind.size();
             // reachable states in this scc
             std::set<unsigned> reach_track;
             std::set<unsigned> scc_states;
-            if (decomp_options_.merge_iwa and is_weakscc(scc_types_, index[0]))
+            if (decomp_options_.merge_iwa and is_weakscc(scc_types_, ind[i][0]))
             {
               for (auto i : weaksccs_)
               {
                 scc_states.insert(scc_info.states_of(i).begin(), scc_info.states_of(i).end());
               }
             }
-            else if (decomp_options_.merge_det and is_accepting_detscc(scc_types_, index[0]))
+            else if (decomp_options_.merge_det and is_accepting_detscc(scc_types_, ind[i][0]))
             {
               for (auto i : acc_detsccs_)
               {
@@ -982,7 +1030,7 @@ namespace cola
             }
             else
             {
-              scc_states.insert(scc_info.states_of(index[0]).begin(), scc_info.states_of(index[0]).end());
+              scc_states.insert(scc_info.states_of(ind[i][0]).begin(), scc_info.states_of(ind[i][0]).end());
             }
             std::set_intersection(scc_states.begin(), scc_states.end(), reachable.begin(), reachable.end(), std::inserter(reach_track, reach_track.begin()));
 
@@ -990,11 +1038,14 @@ namespace cola
             std::set<unsigned> succ_in_scc;
             std::set_intersection(scc_states.begin(), scc_states.end(), all_succ.begin(), all_succ.end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
 
-            bool active_scc = not(std::find(index.begin(), index.end(), active_index) == index.end() and (not decomp_options_.tgba or not is_weakscc(scc_types_, index[0])));
-            bool next_to_active = (true_index == (orig_index + 1) % indices.size());
+            bool active_scc = not(std::find(ind[i].begin(), ind[i].end(), active_index) == ind[i].end() and (not decomp_options_.tgba or not is_weakscc(scc_types_, ind[i][0])));
+            
+            bool next_to_active = (std::find(ind[(i+ind.size()-1)%ind.size()].begin(), ind[(i+ind.size()-1)%ind.size()].end(), active_index) != ind[(i+ind.size()-1)%ind.size()].end()); 
 
             if (active_scc)
+            {
               succ.push_back(scc_objects[i]->get_succ_active(ms, letter));
+            }
 
             else if (next_to_active)
             {
@@ -1003,10 +1054,11 @@ namespace cola
             }
 
             else
+            {
               succ.push_back(scc_objects[i]->get_succ_track(ms, letter));
-
-            i++;
+            }
           }
+          std::cerr << std::endl;
 
           // combine states
           std::vector<std::pair<complement_mstate, bool>> successors = merge_macrostates(succ, orig_index, ms, indices);
