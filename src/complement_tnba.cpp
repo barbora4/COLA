@@ -851,17 +851,37 @@ namespace cola
       get_initial_index(init_state, active_index);
 
       std::vector<complement_class *> scc_objects;
-      unsigned true_index = 0; // TODO remove true_index from classes
+      unsigned true_index = 0;
+      bool det = false;
+      bool nac = false;
       for (auto index : ind)
       {
         if (is_weakscc(scc_types_, index[0]))
+        {
           scc_objects.push_back(new mh_compl(aut_, index, scc_info, decomp_options_, true_index, dir_sim_, reachable_vector, is_accepting_));
+        }
 
         else if (is_accepting_detscc(scc_types_, index[0]))
+        {
+          if (not det)
+          {
+            det = true;
+            true_index = 0;
+          }
           scc_objects.push_back(new ncsb_compl(aut_, index, scc_info, decomp_options_, true_index, dir_sim_, reachable_vector, is_accepting_));
+        }
 
         else
+        {
+          if (not nac)
+          {
+            nac = true;
+            true_index = 0;
+          }
           scc_objects.push_back(new rank_compl(aut_, index, scc_info, decomp_options_, true_index, dir_sim_, reachable_vector, is_accepting_));
+        }
+
+        true_index++;
       }
 
       std::vector<complement_mstate> all_states;
