@@ -38,7 +38,7 @@ namespace cola
                 unsigned nonacc = 0;
                 for (auto state : mstate)
                 {
-                    if (not is_accepting[state])
+                    if (not is_accepting[state] and scc_info_.scc_of(state) == scc_index_[0])
                         nonacc++;
                 }
                 rank_restr_.insert({mstate, 2*(nonacc + 1)});
