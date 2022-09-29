@@ -150,10 +150,10 @@ namespace cola
             domain.insert(pr.first);
 
         auto succ_domain = get_successors_with_box(reachable, state, letter, scc_index);
-        int size = scc_info_.states_of(scc_index).size();
+        auto bound = rank_restr_[reachable];
         for (auto s : succ_domain)
         {
-            restr.push_back(std::make_tuple(s, 2 * (size + 1), (s == BOX) ? false : is_accepting_[s]));
+            restr.push_back(std::make_tuple(s, bound, (s == BOX) ? false : is_accepting_[s]));
         }
 
         std::vector<ranking> succ_rankings = get_succ_rankings(state.f, restr, reachable, letter, scc_index);
@@ -170,8 +170,8 @@ namespace cola
         mstate.curr_reachable_.push_back(orig_init);
 
         rank_state tmp;
-        tmp.reachable.insert(BOX); 
-        mstate.na_sccs_.push_back(tmp); 
+        tmp.reachable.insert(BOX);
+        mstate.na_sccs_.push_back(tmp);
 
         return mstate;
     }
@@ -184,9 +184,18 @@ namespace cola
         unsigned orig_init = aut_->get_init_state_number();
         mstate.curr_reachable_.push_back(orig_init);
 
-        rank_state tmp;
-        tmp.reachable.insert(orig_init); 
-        mstate.na_sccs_.push_back(tmp); 
+        if (scc_info_.scc_of(orig_init) != scc_index_[0])
+        {
+            rank_state tmp;
+            tmp.reachable.insert(BOX);
+            mstate.na_sccs_.push_back(tmp);
+        }
+        else
+        {
+            rank_state tmp;
+            tmp.reachable.insert(orig_init);
+            mstate.na_sccs_.push_back(tmp);
+        }
 
         return mstate;
     }
@@ -247,11 +256,12 @@ namespace cola
             succ.push_back({tmp, false});
 
             std::vector<std::tuple<int, int, bool>> r;
-            int size = scc_info_.states_of(scc_index_[0]).size();
+            auto bound = rank_restr_[std::set<unsigned>(mstate.curr_reachable_.begin(), mstate.curr_reachable_.end())];
+
             for (auto s : reach_succ)
             {
                 bool accepting = (s != BOX ? is_accepting_[s] : false);
-                r.push_back(std::make_tuple(s, 2 * (size + 1), accepting));
+                r.push_back(std::make_tuple(s, bound, accepting));
             }
             std::vector<ranking> rankings = get_tight_rankings(r);
             get_max(rankings);

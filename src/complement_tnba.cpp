@@ -25,6 +25,7 @@
 #include "complement/complement_mh.hpp"
 #include "complement/complement_ncsb.hpp"
 #include "complement/complement_rank.hpp"
+#include "complement/dataflow.hpp"
 
 #include <deque>
 #include <map>
@@ -317,7 +318,7 @@ namespace cola
       }
 
       if (decomp_options_.debug)
-        std::cerr << "IWA: " << weaksccs_.size() + ", DET: " << acc_detsccs_.size() << ", NAC: " << acc_nondetsccs_.size() << std::endl;
+        std::cerr << "IWA: " << weaksccs_.size() << ", DET: " << acc_detsccs_.size() << ", NAC: " << acc_nondetsccs_.size() << std::endl;
     }
 
     unsigned
@@ -462,7 +463,7 @@ namespace cola
         {
           ret.iw_sccs_.push_back(state.iw_sccs_[0]);
           if (not state.iw_break_set_.empty())
-            ret.iw_break_set_ = state.iw_break_set_;  
+            ret.iw_break_set_ = state.iw_break_set_;
         }
         else if (not state.acc_detsccs_.empty())
         {
@@ -770,6 +771,84 @@ namespace cola
         init_state.set_iw_break_set(std::vector<unsigned>());
     }
 
+    waiting get_waiting_part()
+    {
+      std::set<std::set<unsigned>> states;
+      std::map<std::set<unsigned>, std::set<std::set<unsigned>>> trans;
+
+      // initial state
+      unsigned init = aut_->get_init_state_number();
+      std::set<unsigned> init_mstate;
+      init_mstate.insert(init);
+
+      std::stack<std::set<unsigned>> stack;
+      stack.push(init_mstate);
+      states.insert(init_mstate);
+
+      while (not stack.empty())
+      {
+        auto state = stack.top();
+        stack.pop();
+        std::set<std::set<unsigned>> succ;
+
+        // outgoing symbols
+        std::vector<bdd> alphabet;
+
+        bdd msupport = bddtrue;
+        bdd n_s_compat = bddfalse;
+        // const std::set<unsigned> &reach_set = state;
+        // compute the occurred variables in the outgoing transitions of ms, stored in msupport
+        for (unsigned s : state)
+        {
+          msupport &= support_[s];
+          n_s_compat |= compat_[s];
+        }
+
+        bdd all = n_s_compat; 
+
+        while (all != bddfalse)
+        {
+          bdd letter = bdd_satoneset(all, msupport, bddfalse);
+          all -= letter;
+          alphabet.push_back(letter);
+        }
+
+        std::vector<std::set<unsigned>> alphabet_map;
+        for (unsigned i=0; i<alphabet.size(); i++)
+        {
+          alphabet_map.push_back(std::set<unsigned>());
+        }
+
+        for (unsigned s : state) // every state in a macrostate
+        {
+          for (const auto &t : aut_->out(s))
+          {
+            for (unsigned i=0; i<alphabet.size(); i++)
+            {
+              if (bdd_implies(alphabet[i], t.cond))
+              {
+                alphabet_map[i].insert(t.dst);
+              }
+            }
+          }
+        }
+
+        for (auto item : alphabet_map)
+        {
+          if (states.find(item) == states.end())
+          {
+            states.insert(item);
+            stack.push(item);
+          }
+          succ.insert(item);
+        }
+
+        trans.insert({state, succ});
+      }
+
+      return waiting(states, trans);
+    }
+
     spot::twa_graph_ptr
     run()
     {
@@ -803,6 +882,8 @@ namespace cola
         std::cerr << std::endl
                   << std::endl;
       }
+
+      waiting waiting = get_waiting_part();
 
       std::vector<std::set<int>> reachable_vector = get_reachable_vector();
 
@@ -848,7 +929,12 @@ namespace cola
       complement_mstate init_state(scc_info);
       unsigned orig_init = aut_->get_init_state_number();
       int active_index = scc_info.scc_of(orig_init);
+      // int tmp_index = active_index;
       get_initial_index(init_state, active_index);
+
+      // bool first_nonacc = false;
+      // if (tmp_index != active_index)
+      //   first_nonacc = true;
 
       std::vector<complement_class *> scc_objects;
       unsigned true_index = 0;
@@ -878,7 +964,7 @@ namespace cola
             nac = true;
             true_index = 0;
           }
-          scc_objects.push_back(new rank_compl(aut_, index, scc_info, decomp_options_, true_index, dir_sim_, reachable_vector, is_accepting_));
+          scc_objects.push_back(new rank_compl(aut_, index, scc_info, decomp_options_, true_index, dir_sim_, reachable_vector, is_accepting_, waiting));
         }
 
         true_index++;
@@ -891,7 +977,7 @@ namespace cola
       bool acc_edge = false;
 
       std::vector<complement_mstate> init_states;
-      unsigned j=0;
+      unsigned j = 0;
       for (auto index : ind)
       {
         if (index[0] == active_index)
@@ -1011,7 +1097,7 @@ namespace cola
           // index of value active_index
           auto it = std::find(indices.begin(), indices.end(), active_index);
           unsigned true_index = std::distance(indices.begin(), it);
-          unsigned orig_index = true_index; 
+          unsigned orig_index = true_index;
 
           std::vector<complement_mstate> succ_det;
 
@@ -1021,16 +1107,16 @@ namespace cola
           std::vector<std::vector<std::pair<complement_mstate, bool>>> succ;
 
           unsigned start = 0;
-          for (unsigned i=0; i<ind.size(); i++)
+          for (unsigned i = 0; i < ind.size(); i++)
           {
             if (std::find(ind[i].begin(), ind[i].end(), active_index) != ind[i].end())
               start = i;
           }
 
-          unsigned i=0;
-          for (unsigned j=0; j<ind.size(); j++)
+          unsigned i = 0;
+          for (unsigned j = 0; j < ind.size(); j++)
           {
-            i = (j+start)%ind.size();
+            i = (j + start) % ind.size();
             // reachable states in this scc
             std::set<unsigned> reach_track;
             std::set<unsigned> scc_states;
@@ -1059,8 +1145,9 @@ namespace cola
             std::set_intersection(scc_states.begin(), scc_states.end(), all_succ.begin(), all_succ.end(), std::inserter(succ_in_scc, succ_in_scc.begin()));
 
             bool active_scc = not(std::find(ind[i].begin(), ind[i].end(), active_index) == ind[i].end() and (not decomp_options_.tgba or not is_weakscc(scc_types_, ind[i][0])));
-            
-            bool next_to_active = (std::find(ind[(i+ind.size()-1)%ind.size()].begin(), ind[(i+ind.size()-1)%ind.size()].end(), active_index) != ind[(i+ind.size()-1)%ind.size()].end()); 
+
+            bool next_to_active = (std::find(ind[(i + ind.size() - 1) % ind.size()].begin(), ind[(i + ind.size() - 1) % ind.size()].end(), active_index) != ind[(i + ind.size() - 1) % ind.size()].end());
+            // TODO do nac stavu musim dat BOX!!! 
 
             if (active_scc)
             {
@@ -1078,7 +1165,6 @@ namespace cola
               succ.push_back(scc_objects[i]->get_succ_track(ms, letter));
             }
           }
-          std::cerr << std::endl;
 
           // combine states
           std::vector<std::pair<complement_mstate, bool>> successors = merge_macrostates(succ, orig_index, ms, indices);

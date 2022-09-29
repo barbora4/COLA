@@ -2,6 +2,7 @@
 
 #include "cola.hpp"
 #include "complement_mstate.hpp"
+#include "dataflow.hpp"
 
 namespace cola
 {
